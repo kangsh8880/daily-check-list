@@ -193,6 +193,9 @@ input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--acce
 .form-row{ margin-bottom:12px; }
 .form-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 @media (max-width:640px){ .form-grid{ grid-template-columns:1fr; } }
+.form-grid-5{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:12px; }
+@media (max-width:900px){ .form-grid-5{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:480px){ .form-grid-5{ grid-template-columns:1fr; } }
 .form-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
 
 /* ---------------- 테이블 ---------------- */
