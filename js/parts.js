@@ -174,6 +174,7 @@ async function savePart(){
   const dept = document.getElementById("partDept").value.trim();
   const status = document.getElementById("partStatus").value;
   const purchaseDate = document.getElementById("partPurchaseDate").value || null;
+  if (!purchaseDate) { DCL.toast("구매일자는 필수입니다 (부품코드 채번에 사용됩니다)", "err"); return; }
   const cycle = readCycleFields();
   if (cycle.cycle_type === "WEEKLY" && (!cycle.cycle_weekdays || !cycle.cycle_weekdays.length)) {
     DCL.toast("매주 점검 요일을 1개 이상 선택하세요", "err"); return;
