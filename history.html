@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>점검 이력 조회 - K1 일상점검</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="assets/icon-192.png" />
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-badge">K1</div><div><div class="title">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
+    <nav id="sidebarNav"></nav>
+    <div class="nav-section-label">계정</div>
+    <div id="sidebarWho" style="padding:0 8px 10px;"></div>
+    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span>로그아웃</span></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="page-title">점검 이력 조회</div><div class="page-desc">날짜/부품/점검자/결과로 점검 기록을 검색합니다</div></div>
+      <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
+    </div>
+
+    <div class="content">
+      <div class="card">
+        <div class="card-head">
+          <h3>검색 조건</h3>
+          <div class="flex gap-8" style="flex-wrap:wrap;">
+            <button class="btn btn-sm" id="rangeTodayBtn">오늘</button>
+            <button class="btn btn-sm" id="range7Btn">최근 7일</button>
+            <button class="btn btn-sm" id="range30Btn">최근 30일</button>
+          </div>
+        </div>
+        <div class="form-grid-5">
+          <div class="form-row mb-0">
+            <label>시작일</label>
+            <input type="date" id="filterStartDate" />
+          </div>
+          <div class="form-row mb-0">
+            <label>종료일</label>
+            <input type="date" id="filterEndDate" />
+          </div>
+          <div class="form-row mb-0">
+            <label>부품 (코드/이름)</label>
+            <input type="text" id="searchInput" placeholder="예: MTR-250907-0001" />
+          </div>
+          <div class="form-row mb-0">
+            <label>점검자</label>
+            <select id="filterInspector"><option value="">전체</option></select>
+          </div>
+          <div class="form-row mb-0">
+            <label>결과</label>
+            <select id="filterResult">
+              <option value="">전체</option>
+              <option value="NORMAL">정상</option>
+              <option value="ABNORMAL">이상</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3>점검 이력</h3>
+          <span class="hint" id="resultSummary">불러오는 중...</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>점검일시</th><th>부품코드</th><th>부품명</th><th>유형</th><th>점검자</th><th>결과</th><th>비고</th><th style="width:90px;">상세</th></tr></thead>
+            <tbody id="historyBody"><tr><td colspan="8" class="empty-state">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 상세 모달 -->
+<div class="modal-overlay" id="detailModalOverlay">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header"><h3>점검 상세</h3><div class="modal-close" onclick="DCL.closeModal('detailModalOverlay')">✕</div></div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/ai-config.js"></script>
+<script src="js/common.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/history.js"></script>
+</body>
+</html>
