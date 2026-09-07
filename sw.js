@@ -2,14 +2,14 @@
 // Service Worker - 앱쉘 오프라인 캐시 (현장 Wi-Fi 음영지역 대응)
 // 정적 리소스(HTML/CSS/JS/아이콘)는 캐시 우선, Supabase/외부 API는 캐시하지 않음
 // ============================================================================
-const CACHE_NAME = "dcl-shell-v2";
+const CACHE_NAME = "dcl-shell-v3";
 const SHELL_FILES = [
   "./index.html", "./inspect.html", "./dashboard.html", "./actions.html",
-  "./parts.html", "./qr.html", "./types.html", "./inspectors.html",
+  "./parts.html", "./qr.html", "./types.html", "./inspectors.html", "./history.html",
   "./css/style.css",
   "./js/common.js", "./js/ai.js", "./js/ai-config.js", "./js/supabase-config.js",
   "./js/index.js", "./js/inspect.js", "./js/dashboard.js", "./js/actions.js",
-  "./js/parts.js", "./js/qr.js", "./js/types.js", "./js/inspectors.js",
+  "./js/parts.js", "./js/qr.js", "./js/types.js", "./js/inspectors.js", "./js/history.js",
   "./manifest.webmanifest", "./assets/icon-192.png", "./assets/icon-512.png"
 ];
 
