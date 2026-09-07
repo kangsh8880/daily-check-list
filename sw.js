@@ -2,7 +2,7 @@
 // Service Worker - 앱쉘 오프라인 캐시 (현장 Wi-Fi 음영지역 대응)
 // 정적 리소스(HTML/CSS/JS/아이콘)는 캐시 우선, Supabase/외부 API는 캐시하지 않음
 // ============================================================================
-const CACHE_NAME = "dcl-shell-v1";
+const CACHE_NAME = "dcl-shell-v2";
 const SHELL_FILES = [
   "./index.html", "./inspect.html", "./dashboard.html", "./actions.html",
   "./parts.html", "./qr.html", "./types.html", "./inspectors.html",
@@ -27,6 +27,8 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// 네트워크 우선(Network-First) - 온라인이면 항상 최신 배포본을 즉시 사용하고,
+// 오프라인일 때만 캐시된 이전 버전으로 대체 (배포 후 "새로고침해도 안 바뀜" 현상 방지)
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return; // 쓰기 요청(Supabase RPC 등)은 그대로 통과
@@ -34,15 +36,12 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return; // 외부(Supabase/CDN)는 캐시하지 않고 네트워크로 통과
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const fetchPromise = fetch(req).then((res) => {
-        if (res && res.status === 200) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-        }
-        return res;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
+    fetch(req).then((res) => {
+      if (res && res.status === 200) {
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+      }
+      return res;
+    }).catch(() => caches.match(req))
   );
 });
