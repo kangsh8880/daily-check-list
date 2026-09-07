@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>K1 부품 일상점검 시스템 - 로그인</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="assets/icon-192.png" />
+<link rel="manifest" href="manifest.webmanifest" />
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="logo-badge">K1</div>
+        <div class="name">부품 일상점검 시스템</div>
+        <div class="desc">Daily Check List · 부품 등록부터 QR점검, 조치, 대시보드까지</div>
+      </div>
+
+      <div id="setupWarning" class="toast err" style="display:none; margin-bottom:14px; width:100%; box-sizing:border-box;">
+        Supabase 접속 정보가 설정되지 않았습니다. <a href="docs/README.md" target="_blank">설치 가이드</a>를 확인하세요.
+      </div>
+
+      <div class="form-row">
+        <label>점검자 선택</label>
+        <select id="inspectorSelect"><option value="">-- 로딩중 --</option></select>
+      </div>
+      <div class="form-row" id="pinRow" style="display:none;">
+        <label>PIN 번호</label>
+        <input type="password" id="pinInput" maxlength="4" placeholder="4자리 PIN" />
+      </div>
+      <button class="btn btn-primary" id="loginBtn" style="width:100%; padding:12px;">시작하기</button>
+
+      <div class="divider"></div>
+      <div class="text-mute fs-xs" style="text-align:center;">
+        등록된 점검자가 없나요? 관리자에게 <b>점검자 관리</b> 등록을 요청하세요.
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/ai-config.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/index.js"></script>
+</body>
+</html>
