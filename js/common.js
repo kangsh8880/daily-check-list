@@ -190,6 +190,7 @@
     { href:"dashboard.html",  ico:"📊", label:"대시보드", roles:null },
     { href:"inspect.html",    ico:"📷", label:"점검 수행(QR)", roles:null },
     { href:"actions.html",    ico:"🛠️", label:"조치 관리", roles:null },
+    { href:"history.html",    ico:"📜", label:"점검 이력 조회", roles:null },
     { href:"parts.html",      ico:"📦", label:"부품 마스터", roles:["admin"] },
     { href:"qr.html",         ico:"🏷️", label:"QR 발행/재발행", roles:["admin"] },
     { href:"types.html",      ico:"🧩", label:"부품유형/점검항목", roles:["admin"] },
