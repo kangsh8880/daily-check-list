@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async function(){
   document.getElementById("filterType").addEventListener("change", renderTable);
   document.getElementById("filterStatus").addEventListener("change", renderTable);
   document.getElementById("searchInput").addEventListener("input", renderTable);
+  document.getElementById("partCycleType").addEventListener("change", updateCycleBoxVisibility);
 
   await loadAll();
 });
@@ -53,7 +54,7 @@ function renderTable(){
   const statusBadge = { IN_USE:'<span class="badge badge-blue">사용중</span>', STORAGE:'<span class="badge badge-gray">보관중</span>', DISPOSED:'<span class="badge badge-red">폐기</span>' };
 
   const body = document.getElementById("partsBody");
-  if (!list.length) { body.innerHTML = '<tr><td colspan="9" class="empty-state">등록된 부품이 없습니다. + 부품 등록으로 추가하세요.</td></tr>'; return; }
+  if (!list.length) { body.innerHTML = '<tr><td colspan="10" class="empty-state">등록된 부품이 없습니다. + 부품 등록으로 추가하세요.</td></tr>'; return; }
 
   body.innerHTML = list.map(p => {
     const t = typeMap[p.part_type_id];
@@ -65,6 +66,7 @@ function renderTable(){
       <td>${t ? esc(t.type_name) : "-"}</td>
       <td class="text-mute">${esc(p.location||"-")}</td>
       <td class="text-mute">${esc(p.department||"-")}</td>
+      <td><span class="badge badge-blue">${esc(DCL.cycleLabel(p))}</span></td>
       <td>${statusBadge[p.status]||p.status}</td>
       <td class="text-mute" style="max-width:140px;">${names.length? esc(names.join(", ")) : '<span class="badge badge-gray">미배정</span>'}</td>
       <td>${qrBadge}</td>
@@ -92,6 +94,12 @@ function openPartModal(p){
   document.getElementById("partStatus").value = p ? p.status : "IN_USE";
   document.getElementById("partPurchaseDate").value = p ? (p.purchase_date||"") : "";
 
+  document.getElementById("partCycleType").value = p ? (p.cycle_type||"DAILY") : "DAILY";
+  const wdSet = new Set(p && Array.isArray(p.cycle_weekdays) ? p.cycle_weekdays : []);
+  document.querySelectorAll(".cycle-wd").forEach(c => { c.checked = wdSet.has(Number(c.value)); });
+  document.getElementById("partCycleDom").value = p ? (p.cycle_day_of_month || 1) : 1;
+  updateCycleBoxVisibility();
+
   const box = document.getElementById("assignBox");
   const selInsp = document.getElementById("assignInspectorSelect");
   selInsp.innerHTML = ALL_INSPECTORS.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join("");
@@ -105,6 +113,21 @@ function openPartModal(p){
   }
   renderAssignedChips(p ? p.id : null);
   DCL.openModal("partModalOverlay");
+}
+
+function updateCycleBoxVisibility(){
+  const type = document.getElementById("partCycleType").value;
+  document.getElementById("cycleWeeklyBox").style.display = (type === "WEEKLY") ? "" : "none";
+  document.getElementById("cycleMonthlyBox").style.display = (type === "MONTHLY") ? "" : "none";
+}
+
+function readCycleFields(){
+  const type = document.getElementById("partCycleType").value;
+  const weekdays = type === "WEEKLY"
+    ? Array.from(document.querySelectorAll(".cycle-wd:checked")).map(c=>Number(c.value))
+    : null;
+  const dom = type === "MONTHLY" ? Number(document.getElementById("partCycleDom").value || 1) : null;
+  return { cycle_type: type, cycle_weekdays: weekdays, cycle_day_of_month: dom };
 }
 
 function renderAssignedChips(partId){
@@ -151,15 +174,24 @@ async function savePart(){
   const dept = document.getElementById("partDept").value.trim();
   const status = document.getElementById("partStatus").value;
   const purchaseDate = document.getElementById("partPurchaseDate").value || null;
+  const cycle = readCycleFields();
+  if (cycle.cycle_type === "WEEKLY" && (!cycle.cycle_weekdays || !cycle.cycle_weekdays.length)) {
+    DCL.toast("매주 점검 요일을 1개 이상 선택하세요", "err"); return;
+  }
+  if (cycle.cycle_type === "MONTHLY" && (!cycle.cycle_day_of_month || cycle.cycle_day_of_month < 1 || cycle.cycle_day_of_month > 31)) {
+    DCL.toast("매월 점검일자를 1~31 사이로 입력하세요", "err"); return;
+  }
 
   try{
     if (id) {
-      await DCL.rpc("fn_update_part", { p_id:id, p_part_name:name, p_spec:spec, p_location:location, p_department:dept, p_status:status, p_purchase_date:purchaseDate });
+      await DCL.rpc("fn_update_part", { p_id:id, p_part_name:name, p_spec:spec, p_location:location, p_department:dept, p_status:status, p_purchase_date:purchaseDate,
+        p_cycle_type: cycle.cycle_type, p_cycle_weekdays: cycle.cycle_weekdays, p_cycle_day_of_month: cycle.cycle_day_of_month });
       DCL.toast("수정되었습니다");
       DCL.closeModal("partModalOverlay");
       await loadAll();
     } else {
-      const res = await DCL.rpc("fn_create_part", { p_part_name:name, p_part_type_id:typeId, p_spec:spec, p_location:location, p_department:dept, p_purchase_date:purchaseDate });
+      const res = await DCL.rpc("fn_create_part", { p_part_name:name, p_part_type_id:typeId, p_spec:spec, p_location:location, p_department:dept, p_purchase_date:purchaseDate,
+        p_cycle_type: cycle.cycle_type, p_cycle_weekdays: cycle.cycle_weekdays, p_cycle_day_of_month: cycle.cycle_day_of_month });
       const created = Array.isArray(res) ? res[0] : res;
       DCL.toast(`등록 완료: ${created?.part_code || ""}`);
       await loadAll();

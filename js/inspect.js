@@ -79,10 +79,13 @@ async function loadMyParts(){
   const assigns = await DCL.select("assignments", q => q.eq("inspector_id", insp.id).eq("is_active", true));
   if (!assigns.length) { mount.innerHTML = '<div class="empty-state">배정된 부품이 없습니다. 관리자에게 문의하세요.</div>'; return; }
   const partIds = assigns.map(a=>a.part_id);
-  const parts = await DCL.select("parts", q => q.in("id", partIds).eq("is_deleted", false));
+  const allParts = await DCL.select("parts", q => q.in("id", partIds).eq("is_deleted", false));
   const today = DCL.today();
+  const parts = allParts.filter(p => DCL.isDueOn(p, today)); // 오늘 점검주기상 대상인 부품만 표시
   const todays = await DCL.select("inspections", q => q.in("part_id", partIds).eq("inspect_date", today));
   const doneIds = new Set(todays.map(t=>t.part_id));
+
+  if (!parts.length) { mount.innerHTML = '<div class="empty-state">오늘 점검 대상 부품이 없습니다 (점검주기상 오늘은 대상 아님) 🎉</div>'; return; }
 
   mount.innerHTML = parts.map(p => `
     <div class="flex-between" style="padding:9px 0; border-bottom:1px solid var(--border);">

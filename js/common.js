@@ -151,6 +151,40 @@
   DCL.fmtCount = function(n){ return (n===null||n===undefined) ? "0" : Math.round(n).toLocaleString("ko-KR"); };
   DCL.fmtPercent = function(n){ return (n===null||n===undefined||isNaN(n)) ? "0.0%" : (Math.round(n*10)/10).toFixed(1) + "%"; };
 
+  // ---- 점검주기(cycle_type) 판정 -----------------------------------------------
+  // dateStr: "YYYY-MM-DD". 요일/일자 판정은 문자열을 UTC 자정으로 고정 파싱해
+  // 호출측(로컬시간대/UTC 기반) 어느쪽에서 만든 날짜문자열이든 동일하게 계산되도록 함.
+  const WEEKDAY_LABEL = ["일","월","화","수","목","금","토"];
+  DCL.isDueOn = function(part, dateStr){
+    if (!part) return false;
+    const type = part.cycle_type || "DAILY";
+    if (type === "WEEKLY") {
+      const wd = new Date(dateStr + "T00:00:00Z").getUTCDay();
+      return Array.isArray(part.cycle_weekdays) && part.cycle_weekdays.includes(wd);
+    }
+    if (type === "MONTHLY") {
+      const d = new Date(dateStr + "T00:00:00Z");
+      const dom = d.getUTCDate();
+      const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 0)).getUTCDate();
+      const target = Math.min(part.cycle_day_of_month || 1, lastDay); // 월말 보정 (예: 31일 지정 + 2월)
+      return dom === target;
+    }
+    return true; // DAILY
+  };
+  DCL.cycleLabel = function(part){
+    if (!part) return "매일";
+    const type = part.cycle_type || "DAILY";
+    if (type === "WEEKLY") {
+      const days = Array.isArray(part.cycle_weekdays) ? part.cycle_weekdays.slice().sort() : [];
+      return days.length ? "매주 " + days.map(d=>WEEKDAY_LABEL[d]).join(",") : "매주 (요일 미지정)";
+    }
+    if (type === "MONTHLY") {
+      return "매월 " + (part.cycle_day_of_month || 1) + "일";
+    }
+    return "매일";
+  };
+  DCL.WEEKDAY_LABEL = WEEKDAY_LABEL;
+
   // ---- 사이드바 네비게이션 렌더 -------------------------------------------------
   const NAV_ITEMS = [
     { href:"dashboard.html",  ico:"📊", label:"대시보드", roles:null },

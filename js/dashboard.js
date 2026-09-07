@@ -40,11 +40,17 @@ function targetPartIds(){
   return Array.from(new Set(ALL_ASSIGNMENTS.map(a=>a.part_id)));
 }
 
+// 배정된 부품 중 해당 날짜(dateStr)에 점검주기상 점검 대상인 부품만 필터링
+function duePartIdsOn(dateStr){
+  const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
+  return targetPartIds().filter(id => DCL.isDueOn(partMap[id], dateStr));
+}
+
 // ---- 금일 KPI (필터 미적용) ---------------------------------------------------
 let LAST_CTX = {};
 function renderTodayKpis(){
   const today = DCL.today();
-  const targetIds = targetPartIds();
+  const targetIds = duePartIdsOn(today);
   const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
   const doneCnt = targetIds.filter(id=>doneIdsToday.has(id)).length;
   const targetCnt = targetIds.length;
@@ -110,18 +116,18 @@ function renderTrends(){
   const days = Number(document.getElementById("periodFilter").value || 7);
   const labels = [];
   const rateData = [], abnData = [], actionData = [];
-  const targetIds = targetPartIds();
-  const targetCnt = targetIds.length;
 
   for (let i=days-1; i>=0; i--){
     const d = new Date(); d.setDate(d.getDate()-i);
     const dStr = d.toISOString().slice(0,10);
     labels.push(dStr.slice(5));
 
+    const dueIds = duePartIdsOn(dStr);
+    const dueCnt = dueIds.length;
     const dayInsp = ALL_INSPECTIONS.filter(x=>x.inspect_date===dStr);
     const doneIds = new Set(dayInsp.map(x=>x.part_id));
-    const doneCnt = targetIds.filter(id=>doneIds.has(id)).length;
-    rateData.push(targetCnt ? Math.round(doneCnt/targetCnt*1000)/10 : 0);
+    const doneCnt = dueIds.filter(id=>doneIds.has(id)).length;
+    rateData.push(dueCnt ? Math.round(doneCnt/dueCnt*1000)/10 : 0);
 
     abnData.push(dayInsp.filter(x=>x.overall_result==="ABNORMAL").length);
 
