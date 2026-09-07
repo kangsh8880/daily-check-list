@@ -9,6 +9,7 @@
 <style>
   .label-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
   @media (max-width:900px){ .label-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:480px){ .label-grid{ grid-template-columns:repeat(2,1fr); gap:8px; } }
   .print-label{ border:1px solid var(--border); border-radius:8px; padding:10px; text-align:center; background:#fff; }
   .print-label canvas{ width:100%; max-width:150px; height:auto; }
   .print-label .code{ font-family:monospace; font-weight:800; font-size:13px; margin-top:4px; color:#000; }
