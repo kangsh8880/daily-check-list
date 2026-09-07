@@ -60,7 +60,7 @@
       <input type="hidden" id="partId" />
       <div class="form-grid">
         <div class="form-row"><label>부품유형 *</label><select id="partType"></select></div>
-        <div class="form-row"><label>부품코드</label><input type="text" id="partCodeView" disabled placeholder="저장 시 자동 채번" /></div>
+        <div class="form-row"><label>부품코드</label><input type="text" id="partCodeView" disabled placeholder="저장 시 유형-구매일자-일련번호로 자동채번" /></div>
       </div>
       <div class="form-row"><label>부품명 *</label><input type="text" id="partName" placeholder="예: 냉각펌프 모터 #3" /></div>
       <div class="form-row"><label>규격/사양</label><input type="text" id="partSpec" placeholder="예: 3phase 220V 1.5kW" /></div>
@@ -76,7 +76,7 @@
             <option value="DISPOSED">폐기</option>
           </select>
         </div>
-        <div class="form-row"><label>구매일자</label><input type="date" id="partPurchaseDate" /></div>
+        <div class="form-row"><label>구매일자 * <span class="text-mute fs-xs">(부품코드 채번에 사용)</span></label><input type="date" id="partPurchaseDate" /></div>
       </div>
       <div class="divider"></div>
       <div class="form-row">
