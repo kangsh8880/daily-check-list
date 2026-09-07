@@ -3,59 +3,59 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>점검 이력 조회 - K1 일상점검</title>
+<title data-i18n="page.history.pageTitle">점검 이력 조회 - K1 일상점검</title>
 <link rel="stylesheet" href="css/style.css" />
 <link rel="icon" href="assets/icon-192.png" />
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand"><div class="logo-badge">K1</div><div><div class="title">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
+    <div class="brand"><div class="logo-badge">K1</div><div><div class="title" data-i18n="common.brandTitle">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
     <nav id="sidebarNav"></nav>
-    <div class="nav-section-label">계정</div>
+    <div class="nav-section-label" data-i18n="common.accountLabel">계정</div>
     <div id="sidebarWho" style="padding:0 8px 10px;"></div>
-    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span>로그아웃</span></div>
+    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span data-i18n="common.logout">로그아웃</span></div>
   </aside>
 
   <div class="main">
     <div class="topbar">
-      <div><div class="page-title">점검 이력 조회</div><div class="page-desc">날짜/부품/점검자/결과로 점검 기록을 검색합니다</div></div>
+      <div><div class="page-title" data-i18n="page.history.title">점검 이력 조회</div><div class="page-desc" data-i18n="page.history.desc">날짜/부품/점검자/결과로 점검 기록을 검색합니다</div></div>
       <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
     </div>
 
     <div class="content">
       <div class="card">
         <div class="card-head">
-          <h3>검색 조건</h3>
+          <h3 data-i18n="page.history.searchCondTitle">검색 조건</h3>
           <div class="flex gap-8" style="flex-wrap:wrap;">
-            <button class="btn btn-sm" id="rangeTodayBtn">오늘</button>
-            <button class="btn btn-sm" id="range7Btn">최근 7일</button>
-            <button class="btn btn-sm" id="range30Btn">최근 30일</button>
+            <button class="btn btn-sm" id="rangeTodayBtn" data-i18n="page.history.todayBtn">오늘</button>
+            <button class="btn btn-sm" id="range7Btn" data-i18n="page.history.last7Btn">최근 7일</button>
+            <button class="btn btn-sm" id="range30Btn" data-i18n="page.history.last30Btn">최근 30일</button>
           </div>
         </div>
         <div class="form-grid-5">
           <div class="form-row mb-0">
-            <label>시작일</label>
+            <label data-i18n="common.startDateLabel">시작일</label>
             <input type="date" id="filterStartDate" />
           </div>
           <div class="form-row mb-0">
-            <label>종료일</label>
+            <label data-i18n="common.endDateLabel">종료일</label>
             <input type="date" id="filterEndDate" />
           </div>
           <div class="form-row mb-0">
-            <label>부품 (코드/이름)</label>
-            <input type="text" id="searchInput" placeholder="예: MTR-250907-0001" />
+            <label data-i18n="page.history.partSearchLabel">부품 (코드/이름)</label>
+            <input type="text" id="searchInput" placeholder="예: MTR-250907-0001" data-i18n-placeholder="page.history.partSearchPlaceholder" />
           </div>
           <div class="form-row mb-0">
-            <label>점검자</label>
-            <select id="filterInspector"><option value="">전체</option></select>
+            <label data-i18n="common.inspectorLabel">점검자</label>
+            <select id="filterInspector"><option value="" data-i18n="common.all">전체</option></select>
           </div>
           <div class="form-row mb-0">
-            <label>결과</label>
+            <label data-i18n="common.resultLabel">결과</label>
             <select id="filterResult">
-              <option value="">전체</option>
-              <option value="NORMAL">정상</option>
-              <option value="ABNORMAL">이상</option>
+              <option value="" data-i18n="common.all">전체</option>
+              <option value="NORMAL" data-i18n="result.NORMAL">정상</option>
+              <option value="ABNORMAL" data-i18n="result.ABNORMAL">이상</option>
             </select>
           </div>
         </div>
@@ -63,13 +63,13 @@
 
       <div class="card">
         <div class="card-head">
-          <h3>점검 이력</h3>
-          <span class="hint" id="resultSummary">불러오는 중...</span>
+          <h3 data-i18n="page.history.listTitle">점검 이력</h3>
+          <span class="hint" id="resultSummary" data-i18n="common.loading">불러오는 중...</span>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>점검일시</th><th>부품코드</th><th>부품명</th><th>유형</th><th>점검자</th><th>결과</th><th>비고</th><th style="width:90px;">상세</th></tr></thead>
-            <tbody id="historyBody"><tr><td colspan="8" class="empty-state">불러오는 중...</td></tr></tbody>
+            <thead><tr><th data-i18n="common.col.datetime2">점검일시</th><th data-i18n="common.col.partCode">부품코드</th><th data-i18n="common.col.partName">부품명</th><th data-i18n="common.col.type">유형</th><th data-i18n="common.inspectorLabel">점검자</th><th data-i18n="common.resultLabel">결과</th><th data-i18n="common.col.note">비고</th><th style="width:90px;" data-i18n="page.history.detail">상세</th></tr></thead>
+            <tbody id="historyBody"><tr><td colspan="8" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -80,7 +80,7 @@
 <!-- 상세 모달 -->
 <div class="modal-overlay" id="detailModalOverlay">
   <div class="modal" style="width:520px;">
-    <div class="modal-header"><h3>점검 상세</h3><div class="modal-close" onclick="DCL.closeModal('detailModalOverlay')">✕</div></div>
+    <div class="modal-header"><h3 data-i18n="page.history.detailModalTitle">점검 상세</h3><div class="modal-close" onclick="DCL.closeModal('detailModalOverlay')">✕</div></div>
     <div class="modal-body" id="detailBody"></div>
   </div>
 </div>
@@ -88,6 +88,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/ai-config.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/common.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/history.js"></script>

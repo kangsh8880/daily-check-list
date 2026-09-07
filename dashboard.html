@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>대시보드 - K1 일상점검</title>
+<title data-i18n="page.dashboard.pageTitle">대시보드 - K1 일상점검</title>
 <link rel="stylesheet" href="css/style.css" />
 <link rel="icon" href="assets/icon-192.png" />
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand"><div class="logo-badge">K1</div><div><div class="title">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
+    <div class="brand"><div class="logo-badge">K1</div><div><div class="title" data-i18n="common.brandTitle">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
     <nav id="sidebarNav"></nav>
-    <div class="nav-section-label">계정</div>
+    <div class="nav-section-label" data-i18n="common.accountLabel">계정</div>
     <div id="sidebarWho" style="padding:0 8px 10px;"></div>
-    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span>로그아웃</span></div>
+    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span data-i18n="common.logout">로그아웃</span></div>
   </aside>
 
   <div class="main">
     <div class="topbar">
-      <div><div class="page-title">대시보드</div><div class="page-desc">점검 이행 현황과 조치 이행 현황을 한눈에 확인합니다</div></div>
+      <div><div class="page-title" data-i18n="page.dashboard.title">대시보드</div><div class="page-desc" data-i18n="page.dashboard.desc">점검 이행 현황과 조치 이행 현황을 한눈에 확인합니다</div></div>
       <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
     </div>
 
@@ -30,25 +30,25 @@
       <div class="grid grid-4">
         <div class="kpi-tile">
           <div class="ai-chip no-print" id="chipRate" title="AI 진단">✦</div>
-          <div class="kpi-label">금일 점검율</div>
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.rateLabel">금일 점검율</div>
           <div class="kpi-value unit-percent" id="kpiRate">0.0%</div>
           <div class="kpi-sub" id="kpiRateSub">대상 0건 중 0건 완료</div>
         </div>
         <div class="kpi-tile">
           <div class="ai-chip no-print" id="chipMiss" title="AI 진단">✦</div>
-          <div class="kpi-label">금일 미점검</div>
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.missLabel">금일 미점검</div>
           <div class="kpi-value unit-alert" id="kpiMiss">0</div>
-          <div class="kpi-sub">건 (배정 대비 미완료)</div>
+          <div class="kpi-sub" data-i18n="page.dashboard.kpi.missSub">건 (배정 대비 미완료)</div>
         </div>
         <div class="kpi-tile">
           <div class="ai-chip no-print" id="chipAbn" title="AI 진단">✦</div>
-          <div class="kpi-label">금일 이상 발견</div>
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.abnLabel">금일 이상 발견</div>
           <div class="kpi-value" id="kpiAbn">0</div>
-          <div class="kpi-sub">건</div>
+          <div class="kpi-sub" data-i18n="page.dashboard.kpi.abnSub">건</div>
         </div>
         <div class="kpi-tile">
           <div class="ai-chip no-print" id="chipAction" title="AI 진단">✦</div>
-          <div class="kpi-label">조치 이행율 (최근7일)</div>
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.actionRateLabel">조치 이행율 (최근7일)</div>
           <div class="kpi-value unit-percent" id="kpiActionRate">0.0%</div>
           <div class="kpi-sub" id="kpiActionSub">승인완료 0 / 전체 0건 · 지연 0건</div>
         </div>
@@ -59,9 +59,9 @@
         <div class="card-head">
           <h3 id="trendTitle1">점검율 추이</h3>
           <select id="periodFilter" style="width:150px;">
-            <option value="7">최근 7일</option>
-            <option value="30">최근 30일</option>
-            <option value="90">최근 90일</option>
+            <option value="7" data-i18n="common.period.7">최근 7일</option>
+            <option value="30" data-i18n="common.period.30">최근 30일</option>
+            <option value="90" data-i18n="common.period.90">최근 90일</option>
           </select>
         </div>
         <div class="chart-box"><canvas id="rateChart"></canvas></div>
@@ -80,12 +80,12 @@
 
       <div class="grid grid-2">
         <div class="card">
-          <div class="card-head mb-0"><h3>금일 미점검 부품</h3><span class="hint">배정되었으나 아직 점검하지 않은 부품</span></div>
-          <div class="table-wrap"><table><thead><tr><th>부품코드</th><th>부품명</th><th>담당자</th></tr></thead><tbody id="missBody"><tr><td colspan="3" class="empty-state">불러오는 중...</td></tr></tbody></table></div>
+          <div class="card-head mb-0"><h3 data-i18n="page.dashboard.missTableTitle">금일 미점검 부품</h3><span class="hint" data-i18n="page.dashboard.missTableHint">배정되었으나 아직 점검하지 않은 부품</span></div>
+          <div class="table-wrap"><table><thead><tr><th data-i18n="common.col.partCode">부품코드</th><th data-i18n="common.col.partName">부품명</th><th data-i18n="common.col.assignee">담당자</th></tr></thead><tbody id="missBody"><tr><td colspan="3" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody></table></div>
         </div>
         <div class="card">
-          <div class="card-head mb-0"><h3>기한초과 조치</h3><span class="hint">조치 기한이 지난 미완료 건</span></div>
-          <div class="table-wrap"><table><thead><tr><th>부품</th><th>내용</th><th>기한</th></tr></thead><tbody id="overdueBody"><tr><td colspan="3" class="empty-state">불러오는 중...</td></tr></tbody></table></div>
+          <div class="card-head mb-0"><h3 data-i18n="page.dashboard.overdueTableTitle">기한초과 조치</h3><span class="hint" data-i18n="page.dashboard.overdueTableHint">조치 기한이 지난 미완료 건</span></div>
+          <div class="table-wrap"><table><thead><tr><th data-i18n="common.col.part">부품</th><th data-i18n="common.col.content">내용</th><th data-i18n="common.col.dueDate">기한</th></tr></thead><tbody id="overdueBody"><tr><td colspan="3" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody></table></div>
         </div>
       </div>
     </div>
@@ -96,6 +96,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/ai-config.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/common.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/dashboard.js"></script>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page.i18nAdmin.pageTitle">다국어 관리 - K1 일상점검</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="assets/icon-192.png" />
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-badge">K1</div><div><div class="title" data-i18n="common.brandTitle">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
+    <nav id="sidebarNav"></nav>
+    <div class="nav-section-label" data-i18n="common.accountLabel">계정</div>
+    <div id="sidebarWho" style="padding:0 8px 10px;"></div>
+    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span data-i18n="common.logout">로그아웃</span></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="page-title" data-i18n="page.i18nAdmin.title">다국어 관리</div><div class="page-desc" data-i18n="page.i18nAdmin.desc">화면별 문구를 언어별로 확인하고 번역문을 수정합니다</div></div>
+      <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
+    </div>
+
+    <div class="content">
+      <div class="card">
+        <div class="card-head">
+          <h3 data-i18n="page.i18nAdmin.title">다국어 관리</h3>
+          <div class="flex gap-8" style="align-items:center; flex-wrap:wrap;">
+            <input type="text" id="searchInput" placeholder="문장키/문장 검색" data-i18n-placeholder="page.i18nAdmin.searchPlaceholder" style="width:200px;" />
+            <select id="filterLang" style="width:130px;"></select>
+            <select id="filterCategory" style="width:150px;"></select>
+            <span class="hint" id="summaryHint"></span>
+          </div>
+        </div>
+        <div class="hint fs-xs" style="padding:0 16px 10px;" id="reloadHint" data-i18n="page.i18nAdmin.reloadHint">번역 저장 후 각 화면은 새로고침 시 반영됩니다</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th style="width:170px;" data-i18n="page.i18nAdmin.colKey">문장키</th>
+              <th data-i18n="page.i18nAdmin.colBase">기본 문장(한국어)</th>
+              <th style="width:90px;" data-i18n="page.i18nAdmin.colLang">언어</th>
+              <th data-i18n="page.i18nAdmin.colTranslated">번역 문장</th>
+              <th style="width:100px;" data-i18n="page.i18nAdmin.colScreen">화면</th>
+              <th style="width:130px;">관리</th>
+            </tr></thead>
+            <tbody id="rowsBody"><tr><td colspan="6" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/ai-config.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/common.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/i18n-admin.js"></script>
+</body>
+</html>

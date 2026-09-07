@@ -3,49 +3,49 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>부품 마스터 관리 - K1 일상점검</title>
+<title data-i18n="page.parts.pageTitle">부품 마스터 관리 - K1 일상점검</title>
 <link rel="stylesheet" href="css/style.css" />
 <link rel="icon" href="assets/icon-192.png" />
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand"><div class="logo-badge">K1</div><div><div class="title">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
+    <div class="brand"><div class="logo-badge">K1</div><div><div class="title" data-i18n="common.brandTitle">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
     <nav id="sidebarNav"></nav>
-    <div class="nav-section-label">계정</div>
+    <div class="nav-section-label" data-i18n="common.accountLabel">계정</div>
     <div id="sidebarWho" style="padding:0 8px 10px;"></div>
-    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span>로그아웃</span></div>
+    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span data-i18n="common.logout">로그아웃</span></div>
   </aside>
 
   <div class="main">
     <div class="topbar">
-      <div><div class="page-title">부품 마스터 관리</div><div class="page-desc">부품 등록(자동 코드채번) · 수정 · 삭제 · 담당자 배정</div></div>
+      <div><div class="page-title" data-i18n="page.parts.title">부품 마스터 관리</div><div class="page-desc" data-i18n="page.parts.desc">부품 등록(자동 코드채번) · 수정 · 삭제 · 담당자 배정</div></div>
       <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
     </div>
 
     <div class="content">
       <div class="card">
         <div class="card-head">
-          <h3>부품 목록</h3>
+          <h3 data-i18n="page.parts.listTitle">부품 목록</h3>
           <div class="flex gap-8" style="align-items:center; flex-wrap:wrap;">
             <span class="hint" id="unassignedHint"></span>
-            <select id="filterType" style="width:170px;"><option value="">전체 유형</option></select>
+            <select id="filterType" style="width:170px;"><option value="" data-i18n="common.allTypes">전체 유형</option></select>
             <select id="filterStatus" style="width:140px;">
-              <option value="">전체 상태</option>
-              <option value="IN_USE">사용중</option>
-              <option value="STORAGE">보관중</option>
-              <option value="DISPOSED">폐기</option>
+              <option value="" data-i18n="common.status.all">전체 상태</option>
+              <option value="IN_USE" data-i18n="common.status.inUse">사용중</option>
+              <option value="STORAGE" data-i18n="common.status.storage">보관중</option>
+              <option value="DISPOSED" data-i18n="common.status.disposed">폐기</option>
             </select>
-            <input type="text" id="searchInput" placeholder="부품명/코드 검색" style="width:180px;" />
-            <button class="btn btn-primary" id="addPartBtn">+ 부품 등록</button>
+            <input type="text" id="searchInput" placeholder="부품명/코드 검색" data-i18n-placeholder="page.parts.searchPlaceholder" style="width:180px;" />
+            <button class="btn btn-primary" id="addPartBtn" data-i18n="page.parts.addBtn">+ 부품 등록</button>
           </div>
         </div>
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>부품코드</th><th>부품명</th><th>유형</th><th>보관위치</th><th>담당부서</th><th>점검주기</th><th>상태</th><th>담당자</th><th>QR</th><th style="width:150px;">관리</th>
+              <th data-i18n="common.col.partCode">부품코드</th><th data-i18n="common.col.partName">부품명</th><th data-i18n="common.col.type">유형</th><th data-i18n="common.col.location">보관위치</th><th data-i18n="common.col.department">담당부서</th><th data-i18n="common.col.cycle">점검주기</th><th data-i18n="common.col.status">상태</th><th data-i18n="common.col.assignee">담당자</th><th data-i18n="common.col.qr">QR</th><th style="width:150px;" data-i18n="common.col.manage">관리</th>
             </tr></thead>
-            <tbody id="partsBody"><tr><td colspan="10" class="empty-state">불러오는 중...</td></tr></tbody>
+            <tbody id="partsBody"><tr><td colspan="10" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -56,66 +56,66 @@
 <!-- 부품 등록/수정 모달 -->
 <div class="modal-overlay" id="partModalOverlay">
   <div class="modal" style="width:560px;">
-    <div class="modal-header"><h3 id="partModalTitle">부품 등록</h3><div class="modal-close" onclick="DCL.closeModal('partModalOverlay')">✕</div></div>
+    <div class="modal-header"><h3 id="partModalTitle" data-i18n="page.parts.modalTitleNew">부품 등록</h3><div class="modal-close" onclick="DCL.closeModal('partModalOverlay')">✕</div></div>
     <div class="modal-body">
       <input type="hidden" id="partId" />
       <div class="form-grid">
-        <div class="form-row"><label>부품유형 *</label><select id="partType"></select></div>
-        <div class="form-row"><label>부품코드</label><input type="text" id="partCodeView" disabled placeholder="저장 시 유형-구매일자-일련번호로 자동채번" /></div>
+        <div class="form-row"><label data-i18n="common.partTypeLabel">부품유형 *</label><select id="partType"></select></div>
+        <div class="form-row"><label data-i18n="common.partCodeLabel">부품코드</label><input type="text" id="partCodeView" disabled placeholder="저장 시 유형-구매일자-일련번호로 자동채번" data-i18n-placeholder="page.parts.codeViewPlaceholder" /></div>
       </div>
-      <div class="form-row"><label>부품명 *</label><input type="text" id="partName" placeholder="예: 냉각펌프 모터 #3" /></div>
-      <div class="form-row"><label>규격/사양</label><input type="text" id="partSpec" placeholder="예: 3phase 220V 1.5kW" /></div>
+      <div class="form-row"><label data-i18n="common.partNameLabel">부품명 *</label><input type="text" id="partName" placeholder="예: 냉각펌프 모터 #3" data-i18n-placeholder="page.parts.partNamePlaceholder" /></div>
+      <div class="form-row"><label data-i18n="page.parts.specLabel">규격/사양</label><input type="text" id="partSpec" placeholder="예: 3phase 220V 1.5kW" data-i18n-placeholder="page.parts.specPlaceholder" /></div>
       <div class="form-grid">
-        <div class="form-row"><label>보관위치</label><input type="text" id="partLocation" placeholder="예: A동 2층 랙-03" /></div>
-        <div class="form-row"><label>담당부서/라인</label><input type="text" id="partDept" placeholder="예: 1라인 설비팀" /></div>
+        <div class="form-row"><label data-i18n="common.col.location">보관위치</label><input type="text" id="partLocation" placeholder="예: A동 2층 랙-03" data-i18n-placeholder="page.parts.locationPlaceholder" /></div>
+        <div class="form-row"><label data-i18n="page.parts.deptLabel">담당부서/라인</label><input type="text" id="partDept" placeholder="예: 1라인 설비팀" data-i18n-placeholder="page.parts.deptPlaceholder2" /></div>
       </div>
       <div class="form-grid">
-        <div class="form-row"><label>상태</label>
+        <div class="form-row"><label data-i18n="common.statusLabel">상태</label>
           <select id="partStatus">
-            <option value="IN_USE">사용중</option>
-            <option value="STORAGE">보관중</option>
-            <option value="DISPOSED">폐기</option>
+            <option value="IN_USE" data-i18n="common.status.inUse">사용중</option>
+            <option value="STORAGE" data-i18n="common.status.storage">보관중</option>
+            <option value="DISPOSED" data-i18n="common.status.disposed">폐기</option>
           </select>
         </div>
-        <div class="form-row"><label>구매일자 * <span class="text-mute fs-xs">(부품코드 채번에 사용)</span></label><input type="date" id="partPurchaseDate" /></div>
+        <div class="form-row"><label data-i18n="page.parts.purchaseDateLabel">구매일자 * <span class="text-mute fs-xs" data-i18n="page.parts.purchaseDateHint">(부품코드 채번에 사용)</span></label><input type="date" id="partPurchaseDate" /></div>
       </div>
       <div class="divider"></div>
       <div class="form-row">
-        <label>점검주기 *</label>
+        <label data-i18n="common.cycleTypeLabel">점검주기 *</label>
         <select id="partCycleType">
-          <option value="DAILY">매일</option>
-          <option value="WEEKLY">매주 (요일 지정)</option>
-          <option value="MONTHLY">매월 (일자 지정)</option>
+          <option value="DAILY" data-i18n="cycle.daily">매일</option>
+          <option value="WEEKLY" data-i18n="cycle.weeklyOption">매주 (요일 지정)</option>
+          <option value="MONTHLY" data-i18n="cycle.monthlyOption">매월 (일자 지정)</option>
         </select>
       </div>
       <div class="form-row" id="cycleWeeklyBox" style="display:none;">
-        <label>점검 요일</label>
+        <label data-i18n="page.parts.weekdayLabel">점검 요일</label>
         <div class="flex gap-8" style="flex-wrap:wrap;" id="cycleWeekdayChecks">
-          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="0" style="width:auto; margin-right:3px;" />일</label>
-          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="1" style="width:auto; margin-right:3px;" />월</label>
-          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="2" style="width:auto; margin-right:3px;" />화</label>
-          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="3" style="width:auto; margin-right:3px;" />수</label>
-          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="4" style="width:auto; margin-right:3px;" />목</label>
-          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="5" style="width:auto; margin-right:3px;" />금</label>
-          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="6" style="width:auto; margin-right:3px;" />토</label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="0" style="width:auto; margin-right:3px;" /><span data-i18n="weekday.0">일</span></label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="1" style="width:auto; margin-right:3px;" /><span data-i18n="weekday.1">월</span></label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="2" style="width:auto; margin-right:3px;" /><span data-i18n="weekday.2">화</span></label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="3" style="width:auto; margin-right:3px;" /><span data-i18n="weekday.3">수</span></label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="4" style="width:auto; margin-right:3px;" /><span data-i18n="weekday.4">목</span></label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="5" style="width:auto; margin-right:3px;" /><span data-i18n="weekday.5">금</span></label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="6" style="width:auto; margin-right:3px;" /><span data-i18n="weekday.6">토</span></label>
         </div>
       </div>
       <div class="form-row" id="cycleMonthlyBox" style="display:none;">
-        <label>매월 점검일자 (1~31)</label>
+        <label data-i18n="page.parts.monthlyDayLabel">매월 점검일자 (1~31)</label>
         <input type="number" id="partCycleDom" min="1" max="31" value="1" style="width:120px;" />
       </div>
       <div class="divider"></div>
       <div class="form-row">
-        <label>점검 담당자 배정</label>
+        <label data-i18n="page.parts.assignLabel">점검 담당자 배정</label>
         <div id="assignBox" class="flex gap-8" style="flex-wrap:wrap;">
           <select id="assignInspectorSelect" style="width:220px;"></select>
-          <button class="btn btn-sm" id="addAssignBtn" type="button">+ 배정</button>
+          <button class="btn btn-sm" id="addAssignBtn" type="button" data-i18n="page.parts.addAssignBtn">+ 배정</button>
         </div>
         <div id="assignedList" class="mt-8 flex gap-6" style="flex-wrap:wrap;"></div>
       </div>
       <div class="form-actions">
-        <button class="btn" onclick="DCL.closeModal('partModalOverlay')">취소</button>
-        <button class="btn btn-primary" id="savePartBtn">저장</button>
+        <button class="btn" onclick="DCL.closeModal('partModalOverlay')" data-i18n="common.cancel">취소</button>
+        <button class="btn btn-primary" id="savePartBtn" data-i18n="common.save">저장</button>
       </div>
     </div>
   </div>
@@ -124,6 +124,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/ai-config.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/common.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/parts.js"></script>
