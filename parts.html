@@ -42,9 +42,9 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>부품코드</th><th>부품명</th><th>유형</th><th>보관위치</th><th>담당부서</th><th>상태</th><th>담당자</th><th>QR</th><th style="width:150px;">관리</th>
+              <th>부품코드</th><th>부품명</th><th>유형</th><th>보관위치</th><th>담당부서</th><th>점검주기</th><th>상태</th><th>담당자</th><th>QR</th><th style="width:150px;">관리</th>
             </tr></thead>
-            <tbody id="partsBody"><tr><td colspan="9" class="empty-state">불러오는 중...</td></tr></tbody>
+            <tbody id="partsBody"><tr><td colspan="10" class="empty-state">불러오는 중...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -77,6 +77,31 @@
           </select>
         </div>
         <div class="form-row"><label>구매일자</label><input type="date" id="partPurchaseDate" /></div>
+      </div>
+      <div class="divider"></div>
+      <div class="form-row">
+        <label>점검주기 *</label>
+        <select id="partCycleType">
+          <option value="DAILY">매일</option>
+          <option value="WEEKLY">매주 (요일 지정)</option>
+          <option value="MONTHLY">매월 (일자 지정)</option>
+        </select>
+      </div>
+      <div class="form-row" id="cycleWeeklyBox" style="display:none;">
+        <label>점검 요일</label>
+        <div class="flex gap-8" style="flex-wrap:wrap;" id="cycleWeekdayChecks">
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="0" style="width:auto; margin-right:3px;" />일</label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="1" style="width:auto; margin-right:3px;" />월</label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="2" style="width:auto; margin-right:3px;" />화</label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="3" style="width:auto; margin-right:3px;" />수</label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="4" style="width:auto; margin-right:3px;" />목</label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="5" style="width:auto; margin-right:3px;" />금</label>
+          <label class="fs-sm"><input type="checkbox" class="cycle-wd" value="6" style="width:auto; margin-right:3px;" />토</label>
+        </div>
+      </div>
+      <div class="form-row" id="cycleMonthlyBox" style="display:none;">
+        <label>매월 점검일자 (1~31)</label>
+        <input type="number" id="partCycleDom" min="1" max="31" value="1" style="width:120px;" />
       </div>
       <div class="divider"></div>
       <div class="form-row">
