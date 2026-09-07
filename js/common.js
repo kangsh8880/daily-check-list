@@ -215,6 +215,38 @@
     }
   };
 
+  // ---- 모바일 사이드바(햄버거 토글) --------------------------------------------
+  DCL.initMobileNav = function(){
+    const sidebar = document.querySelector(".sidebar");
+    const topbar = document.querySelector(".topbar");
+    if (!sidebar || !topbar) return;
+
+    let backdrop = document.querySelector(".sidebar-backdrop");
+    if (!backdrop) {
+      backdrop = document.createElement("div");
+      backdrop.className = "sidebar-backdrop";
+      document.body.appendChild(backdrop);
+    }
+
+    function closeNav(){ sidebar.classList.remove("open"); backdrop.classList.remove("open"); }
+    function openNav(){ sidebar.classList.add("open"); backdrop.classList.add("open"); }
+
+    if (!document.getElementById("mobileMenuBtn")) {
+      const btn = document.createElement("div");
+      btn.id = "mobileMenuBtn";
+      btn.className = "hamburger-btn no-print";
+      btn.title = "메뉴";
+      btn.textContent = "☰";
+      btn.addEventListener("click", function(){
+        sidebar.classList.contains("open") ? closeNav() : openNav();
+      });
+      topbar.insertBefore(btn, topbar.firstChild);
+    }
+
+    backdrop.addEventListener("click", closeNav);
+    sidebar.querySelectorAll(".nav-item").forEach(function(a){ a.addEventListener("click", closeNav); });
+  };
+
   // ---- 서비스워커 등록 (오프라인 앱쉘 캐시) -------------------------------------
   DCL.registerSW = function(){
     if ("serviceWorker" in navigator) {
@@ -231,6 +263,7 @@
       const insp = DCL.requireAuth(opts.roles);
       if (!insp) return null;
       DCL.renderSidebar(activeHref);
+      DCL.initMobileNav();
       const logoutBtn = document.getElementById("logoutBtn");
       if (logoutBtn) logoutBtn.addEventListener("click", DCL.logout);
       if (!DCL.isConfigured()) {
