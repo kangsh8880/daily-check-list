@@ -40,13 +40,13 @@ function setQueue(q){ localStorage.setItem(OFFLINE_KEY, JSON.stringify(q)); upda
 function updateOfflineBanner(){
   const banner = document.getElementById("offlineBanner");
   const q = getQueue();
-  const cntEl = document.getElementById("queueCount");
   if (!navigator.onLine) {
     banner.style.display = "block";
-    cntEl.textContent = q.length ? `(대기중 ${q.length}건)` : "";
+    banner.innerHTML = `<span data-i18n="page.inspect.offlineBanner">${DCL.t("page.inspect.offlineBanner")}</span> <span id="queueCount"></span>`;
+    document.getElementById("queueCount").textContent = q.length ? DCL.t("page.inspect.offlineQueueCount", {n:q.length}) : "";
   } else if (q.length) {
     banner.style.display = "block";
-    banner.innerHTML = `🔄 미전송 점검결과 ${q.length}건을 서버로 동기화 중입니다...`;
+    banner.innerHTML = DCL.t("page.inspect.offlineSyncing", {n:q.length});
   } else {
     banner.style.display = "none";
   }
@@ -77,7 +77,7 @@ async function loadMyParts(){
   const insp = DCL.getCurrentInspector();
   const mount = document.getElementById("myPartsList");
   const assigns = await DCL.select("assignments", q => q.eq("inspector_id", insp.id).eq("is_active", true));
-  if (!assigns.length) { mount.innerHTML = '<div class="empty-state">배정된 부품이 없습니다. 관리자에게 문의하세요.</div>'; return; }
+  if (!assigns.length) { mount.innerHTML = `<div class="empty-state">${DCL.t("page.inspect.noAssigned")}</div>`; return; }
   const partIds = assigns.map(a=>a.part_id);
   const allParts = await DCL.select("parts", q => q.in("id", partIds).eq("is_deleted", false));
   const today = DCL.today();
@@ -85,7 +85,7 @@ async function loadMyParts(){
   const todays = await DCL.select("inspections", q => q.in("part_id", partIds).eq("inspect_date", today));
   const doneIds = new Set(todays.map(t=>t.part_id));
 
-  if (!parts.length) { mount.innerHTML = '<div class="empty-state">오늘 점검 대상 부품이 없습니다 (점검주기상 오늘은 대상 아님) 🎉</div>'; return; }
+  if (!parts.length) { mount.innerHTML = `<div class="empty-state">${DCL.t("page.inspect.noneDueToday")}</div>`; return; }
 
   mount.innerHTML = parts.map(p => `
     <div class="flex-between" style="padding:9px 0; border-bottom:1px solid var(--border);">
@@ -94,17 +94,17 @@ async function loadMyParts(){
         <div class="text-mute mono fs-xs">${esc(p.part_code)}</div>
       </div>
       <div>
-        ${doneIds.has(p.id) ? '<span class="badge badge-green">✔ 점검완료</span>' : '<span class="badge badge-yellow">미점검</span>'}
-        <button class="btn btn-sm mt-8" style="display:block; margin-top:6px;" onclick="loadPartByCode('${esc(p.part_code)}')">점검하기</button>
+        ${doneIds.has(p.id) ? `<span class="badge badge-green">${DCL.t("page.inspect.doneComplete")}</span>` : `<span class="badge badge-yellow">${DCL.t("page.inspect.notDoneYet")}</span>`}
+        <button class="btn btn-sm mt-8" style="display:block; margin-top:6px;" onclick="loadPartByCode('${esc(p.part_code)}')">${DCL.t("page.inspect.inspectBtn")}</button>
       </div>
-    </div>`).join("") || '<div class="empty-state">배정된 부품이 없습니다</div>';
+    </div>`).join("") || `<div class="empty-state">${DCL.t("page.inspect.noneAssignedShort")}</div>`;
 }
 
 // ---- QR 스캐너 ---------------------------------------------------------------
 function startScan(){
   if (typeof Html5Qrcode === "undefined") {
-    document.getElementById("scanHint").textContent = "스캐너 라이브러리를 불러오지 못했습니다 (네트워크 확인). 아래 직접입력을 이용하세요.";
-    DCL.toast("QR 스캐너 로드 실패 - 직접 코드 입력을 이용하세요", "err");
+    document.getElementById("scanHint").textContent = DCL.t("page.inspect.scannerLoadFail");
+    DCL.toast(DCL.t("page.inspect.scannerLoadFailToast"), "err");
     return;
   }
   document.getElementById("startScanBtn").style.display = "none";
@@ -116,7 +116,7 @@ function startScan(){
     onScanSuccess,
     ()=>{}
   ).catch(function(err){
-    document.getElementById("scanHint").textContent = "카메라를 사용할 수 없습니다. 아래 직접입력을 이용하세요.";
+    document.getElementById("scanHint").textContent = DCL.t("page.inspect.cameraUnavailable");
     document.getElementById("startScanBtn").style.display = "inline-flex";
     document.getElementById("stopScanBtn").style.display = "none";
   });
@@ -141,7 +141,7 @@ function onScanSuccess(text){
 // ---- 부품 로드 및 점검 화면 ----------------------------------------------------
 async function loadPartByCode(code){
   const parts = await DCL.select("parts", q => q.eq("part_code", code).eq("is_deleted", false).limit(1));
-  if (!parts.length) { DCL.toast(`'${code}' 부품을 찾을 수 없습니다`, "err"); return; }
+  if (!parts.length) { DCL.toast(DCL.t("page.inspect.partNotFound", {code}), "err"); return; }
   CURRENT_PART = parts[0];
   CURRENT_ITEMS = await DCL.select("part_checklist_items", q => q.eq("part_id", CURRENT_PART.id).eq("is_active", true).order("item_order"));
   ITEM_STATE = {};
@@ -154,8 +154,8 @@ async function loadPartByCode(code){
   const today = DCL.today();
   const todays = await DCL.select("inspections", q => q.eq("part_id", CURRENT_PART.id).eq("inspect_date", today));
   document.getElementById("todayBadge").innerHTML = todays.length
-    ? '<span class="badge badge-green">✔ 오늘 이미 점검 완료 (재점검시 결과가 추가 기록됩니다)</span>'
-    : '<span class="badge badge-yellow">오늘 미점검 상태</span>';
+    ? `<span class="badge badge-green">${DCL.t("page.inspect.alreadyDoneToday")}</span>`
+    : `<span class="badge badge-yellow">${DCL.t("page.inspect.notDoneToday")}</span>`;
 
   renderChecklist();
   document.getElementById("scanStep").style.display = "none";
@@ -165,14 +165,14 @@ async function loadPartByCode(code){
 
 function renderChecklist(){
   const area = document.getElementById("checklistArea");
-  if (!CURRENT_ITEMS.length) { area.innerHTML = '<div class="card empty-state">등록된 점검항목이 없습니다. 관리자에게 문의하세요.</div>'; return; }
+  if (!CURRENT_ITEMS.length) { area.innerHTML = `<div class="card empty-state">${DCL.t("page.inspect.noItems")}</div>`; return; }
   area.innerHTML = CURRENT_ITEMS.map((it, idx) => {
     if (it.judge_type === "OX") {
       return `<div class="checklist-item" id="ci-${idx}">
-        <div class="flex-between"><b>${idx+1}. ${esc(it.item_name)}</b>${it.photo_required?'<span class="badge badge-yellow">이상시 사진필수</span>':''}</div>
+        <div class="flex-between"><b>${idx+1}. ${esc(it.item_name)}</b>${it.photo_required?`<span class="badge badge-yellow">${DCL.t("page.inspect.photoRequired")}</span>`:''}</div>
         <div class="judge-btns">
-          <div class="judge-btn" id="ok-${idx}" onclick="setOX(${idx},'OK')">✔ 정상</div>
-          <div class="judge-btn" id="ng-${idx}" onclick="setOX(${idx},'NG')">✖ 이상</div>
+          <div class="judge-btn" id="ok-${idx}" onclick="setOX(${idx},'OK')">${DCL.t("page.inspect.judgeNormal")}</div>
+          <div class="judge-btn" id="ng-${idx}" onclick="setOX(${idx},'NG')">${DCL.t("page.inspect.judgeAbnormal")}</div>
         </div>
         <div id="photo-${idx}"></div>
       </div>`;
@@ -180,18 +180,18 @@ function renderChecklist(){
     if (it.judge_type === "NUMERIC") {
       const range = (it.lower_limit!=null||it.upper_limit!=null) ? `(기준: ${it.lower_limit??'-'} ~ ${it.upper_limit??'-'} ${it.unit||''})` : "";
       return `<div class="checklist-item" id="ci-${idx}">
-        <div class="flex-between"><b>${idx+1}. ${esc(it.item_name)}</b>${it.photo_required?'<span class="badge badge-yellow">이상시 사진필수</span>':''}</div>
+        <div class="flex-between"><b>${idx+1}. ${esc(it.item_name)}</b>${it.photo_required?`<span class="badge badge-yellow">${DCL.t("page.inspect.photoRequired")}</span>`:''}</div>
         <div class="text-mute fs-xs">${range}</div>
-        <input type="number" step="0.01" placeholder="측정값 입력 ${it.unit?('('+it.unit+')'):''}" oninput="setNumeric(${idx}, this.value)" class="mt-8"/>
+        <input type="number" step="0.01" placeholder="${DCL.t("page.inspect.numericPlaceholder", {unit: it.unit?('('+it.unit+')'):''})}" oninput="setNumeric(${idx}, this.value)" class="mt-8"/>
         <div id="photo-${idx}"></div>
       </div>`;
     }
     // SELECT
     const opts = (it.select_options||"").split(",").map(s=>s.trim()).filter(Boolean);
     return `<div class="checklist-item" id="ci-${idx}">
-      <div class="flex-between"><b>${idx+1}. ${esc(it.item_name)}</b>${it.photo_required?'<span class="badge badge-yellow">이상시 사진필수</span>':''}</div>
+      <div class="flex-between"><b>${idx+1}. ${esc(it.item_name)}</b>${it.photo_required?`<span class="badge badge-yellow">${DCL.t("page.inspect.photoRequired")}</span>`:''}</div>
       <select onchange="setSelect(${idx}, this.value, this.selectedIndex)" class="mt-8">
-        <option value="">선택하세요</option>
+        <option value="">${DCL.t("page.inspect.selectPlaceholder")}</option>
         ${opts.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("")}
       </select>
       <div id="photo-${idx}"></div>
@@ -205,7 +205,7 @@ function markAbnormalUI(idx, abnormal){
   const it = CURRENT_ITEMS[idx];
   const photoMount = document.getElementById("photo-"+idx);
   if (abnormal && it.photo_required) {
-    photoMount.innerHTML = `<div class="mt-8"><label class="fs-xs">이상 사진 첨부 (필수)</label>
+    photoMount.innerHTML = `<div class="mt-8"><label class="fs-xs">${DCL.t("page.inspect.photoLabel")}</label>
       <input type="file" accept="image/*" capture="environment" onchange="attachPhoto(${idx}, this)"/>
       <div id="photoPreview-${idx}"></div></div>`;
   } else {
@@ -274,13 +274,13 @@ function showScanStep(){
 }
 
 async function submitInspection(){
-  if (!CURRENT_ITEMS.length) { DCL.toast("점검항목이 없습니다", "err"); return; }
+  if (!CURRENT_ITEMS.length) { DCL.toast(DCL.t("page.inspect.noItemsToast"), "err"); return; }
   const results = [];
   for (let idx=0; idx<CURRENT_ITEMS.length; idx++){
     const it = CURRENT_ITEMS[idx];
     const st = ITEM_STATE[idx];
-    if (st.input_value === null || st.input_value === "") { DCL.toast(`'${it.item_name}' 항목을 입력하세요`, "err"); return; }
-    if (st.judge_result === "ABNORMAL" && it.photo_required && !st.photo_url) { DCL.toast(`'${it.item_name}' 이상 사진을 첨부하세요`, "err"); return; }
+    if (st.input_value === null || st.input_value === "") { DCL.toast(DCL.t("page.inspect.itemRequired", {item: it.item_name}), "err"); return; }
+    if (st.judge_result === "ABNORMAL" && it.photo_required && !st.photo_url) { DCL.toast(DCL.t("page.inspect.photoRequiredToast", {item: it.item_name}), "err"); return; }
     results.push({ item_name: it.item_name, judge_type: it.judge_type, input_value: String(st.input_value), judge_result: st.judge_result, photo_url: st.photo_url });
   }
   const insp = DCL.getCurrentInspector();
@@ -302,7 +302,7 @@ async function submitInspection(){
     showDone(hasAbnormal, false);
   }catch(e){
     console.warn(e);
-    if (e && e.message === "not-configured") { DCL.toast("Supabase 설정이 필요합니다", "err"); }
+    if (e && e.message === "not-configured") { DCL.toast(DCL.t("page.inspect.notConfiguredToast"), "err"); }
     else { queueSubmission(payload); showDone(hasAbnormal, true); }
   }
   document.getElementById("submitInspectionBtn").disabled = false;
@@ -318,10 +318,10 @@ function showDone(hasAbnormal, offline){
   document.getElementById("inspectStep").style.display = "none";
   document.getElementById("doneStep").style.display = "block";
   document.getElementById("doneIcon").textContent = offline ? "📥" : (hasAbnormal ? "⚠️" : "✅");
-  document.getElementById("doneTitle").textContent = offline ? "오프라인 저장됨 (연결 시 자동 전송)" : (hasAbnormal ? "이상 발견 - 조치가 등록되었습니다" : "점검이 저장되었습니다");
+  document.getElementById("doneTitle").textContent = offline ? DCL.t("page.inspect.doneOfflineTitle") : (hasAbnormal ? DCL.t("page.inspect.doneAbnormalTitle") : DCL.t("page.inspect.doneNormalTitle"));
   document.getElementById("doneDesc").textContent = offline
-    ? `${CURRENT_PART.part_code} · 네트워크 연결 시 자동으로 서버에 전송됩니다.`
-    : (hasAbnormal ? `${CURRENT_PART.part_code} 에서 이상항목이 발견되어 조치관리에 자동 등록되었습니다.` : `${CURRENT_PART.part_code} 점검이 정상 완료되었습니다.`);
+    ? DCL.t("page.inspect.doneOfflineDesc", {code: CURRENT_PART.part_code})
+    : (hasAbnormal ? DCL.t("page.inspect.doneAbnormalDesc", {code: CURRENT_PART.part_code}) : DCL.t("page.inspect.doneNormalDesc", {code: CURRENT_PART.part_code}));
 }
 
 function esc(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }

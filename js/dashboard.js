@@ -3,16 +3,20 @@
 // ============================================================================
 let ALL_ASSIGNMENTS=[], ALL_PARTS=[], ALL_INSPECTIONS=[], ALL_ACTIONS=[], ALL_INSPECTORS=[];
 let RATE_CHART=null, ABN_CHART=null, ACTION_CHART=null;
-const KPI_NAMES = { rate:"점검율", abnormal:"이상 발견 건수", action:"조치 이행율" };
+let KPI_NAMES = { rate:"점검율", abnormal:"이상 발견 건수", action:"조치 이행율" };
+function refreshKpiNames(){
+  KPI_NAMES = { rate: DCL.t("kpi.rate"), abnormal: DCL.t("kpi.abnormal"), action: DCL.t("kpi.action") };
+}
 
 document.addEventListener("DOMContentLoaded", async function(){
   const insp = DCL.initPage("dashboard.html", null);
   if (!insp) return;
 
+  refreshKpiNames();
   // 차트 제목: KPI명 + " 추이" 동적 표시 (하드코딩 금지)
-  document.getElementById("trendTitle1").textContent = KPI_NAMES.rate + " 추이";
-  document.getElementById("trendTitle2").textContent = KPI_NAMES.abnormal + " 추이";
-  document.getElementById("trendTitle3").textContent = KPI_NAMES.action + " 추이";
+  document.getElementById("trendTitle1").textContent = DCL.t("common.trendTitle", {name: KPI_NAMES.rate});
+  document.getElementById("trendTitle2").textContent = DCL.t("common.trendTitle", {name: KPI_NAMES.abnormal});
+  document.getElementById("trendTitle3").textContent = DCL.t("common.trendTitle", {name: KPI_NAMES.action});
 
   document.getElementById("periodFilter").addEventListener("change", renderTrends);
   DCL.autoSelectFirst(document.getElementById("periodFilter"));
@@ -76,18 +80,18 @@ function renderTodayKpis(){
   const rawTodayCount = todayInspections.length;
 
   document.getElementById("kpiRate").textContent = DCL.fmtPercent(rate);
-  document.getElementById("kpiRateSub").textContent = `대상 ${DCL.fmtCount(targetCnt)}건 중 ${DCL.fmtCount(doneCnt)}건 완료 · 금일 점검 시행 ${DCL.fmtCount(rawTodayCount)}건`;
+  document.getElementById("kpiRateSub").textContent = DCL.t("page.dashboard.rateSub", { target: DCL.fmtCount(targetCnt), done: DCL.fmtCount(doneCnt), raw: DCL.fmtCount(rawTodayCount) });
 
   // 점검율 대상에서 빠진 점검 건이 있으면 근본원인을 배너로 안내 (오늘 점검주기 대상 아님 / 사용중 상태 아님)
   const excl = classifyExcludedTodayInspections(todayInspections);
   const warnEl = document.getElementById("assignWarnBanner");
   if (warnEl){
     const msgs = [];
-    if (excl.notDueCnt > 0) msgs.push(`오늘이 점검주기 대상일이 아닌 부품 점검 ${excl.notDueCnt}건 → 점검주기 설정을 확인하세요`);
-    if (excl.notInUseCnt > 0) msgs.push(`사용중 상태가 아닌(보관중·폐기) 부품 점검 ${excl.notInUseCnt}건 → 부품 상태를 확인하세요`);
+    if (excl.notDueCnt > 0) msgs.push(DCL.t("page.dashboard.warnNotDue", { n: excl.notDueCnt }));
+    if (excl.notInUseCnt > 0) msgs.push(DCL.t("page.dashboard.warnNotInUse", { n: excl.notInUseCnt }));
     if (msgs.length){
       warnEl.style.display = "";
-      warnEl.innerHTML = `⚠️ 금일 점검율에 반영되지 않은 점검이 있습니다: ${msgs.join(" · ")}`;
+      warnEl.innerHTML = `${DCL.t("page.dashboard.warnPrefix")} ${msgs.join(" · ")}`;
     } else {
       warnEl.style.display = "none";
     }
@@ -104,8 +108,8 @@ function renderTodayKpis(){
   document.getElementById("kpiMiss").textContent = DCL.fmtCount(missList.length);
   const missBody = document.getElementById("missBody");
   missBody.innerHTML = missList.length ? missList.map(m=>`
-    <tr><td class="mono"><b>${esc(m.part_code)}</b></td><td>${esc(m.part_name)}</td><td class="text-mute">${esc(m.inspectors.join(", ")||"미배정")}</td></tr>`).join("")
-    : '<tr><td colspan="3" class="empty-state">오늘 미점검 부품이 없습니다 🎉</td></tr>';
+    <tr><td class="mono"><b>${esc(m.part_code)}</b></td><td>${esc(m.part_name)}</td><td class="text-mute">${esc(m.inspectors.join(", ")||DCL.t("common.unassigned"))}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="empty-state">${DCL.t("page.dashboard.missEmpty")}</td></tr>`;
 
   const abnormalToday = ALL_INSPECTIONS.filter(i=>i.inspect_date===today && i.overall_result==="ABNORMAL").length;
   document.getElementById("kpiAbn").textContent = DCL.fmtCount(abnormalToday);
@@ -118,13 +122,13 @@ function renderTodayKpis(){
   const actionRate = recentActions.length ? (approved/recentActions.length*100) : 0;
   const overdue = ALL_ACTIONS.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today);
   document.getElementById("kpiActionRate").textContent = DCL.fmtPercent(actionRate);
-  document.getElementById("kpiActionSub").textContent = `승인완료 ${DCL.fmtCount(approved)} / 전체 ${DCL.fmtCount(recentActions.length)}건 · 지연 ${DCL.fmtCount(overdue.length)}건`;
+  document.getElementById("kpiActionSub").textContent = DCL.t("page.dashboard.actionSub", { approved: DCL.fmtCount(approved), total: DCL.fmtCount(recentActions.length), overdue: DCL.fmtCount(overdue.length) });
 
   const overdueBody = document.getElementById("overdueBody");
   overdueBody.innerHTML = overdue.length ? overdue.map(a=>{
     const p = partMap[a.part_id];
     return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td class="text-red">${DCL.fmtDate(a.due_date)}</td></tr>`;
-  }).join("") : '<tr><td colspan="3" class="empty-state">기한 초과 조치가 없습니다 🎉</td></tr>';
+  }).join("") : `<tr><td colspan="3" class="empty-state">${DCL.t("page.dashboard.overdueEmpty")}</td></tr>`;
 
   LAST_CTX = {
     rate, targetCnt, doneCnt,
@@ -143,7 +147,7 @@ function renderTrends(){
   if (typeof Chart === "undefined") {
     ["rateChart","abnormalChart","actionChart"].forEach(function(id){
       const c = document.getElementById(id);
-      if (c && c.parentElement) c.parentElement.innerHTML = '<div class="empty-state">차트 라이브러리를 불러오지 못했습니다 (네트워크 확인 필요)</div>';
+      if (c && c.parentElement) c.parentElement.innerHTML = `<div class="empty-state">${DCL.t("common.chartLibFail")}</div>`;
     });
     return;
   }
@@ -201,10 +205,10 @@ function wireAiChips(){
     DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.rate, input_value: Math.round(LAST_CTX.rate*10)/10, lower_limit:95, upper_limit:null, judge_type:"NUMERIC" }, e.currentTarget);
   });
   document.getElementById("chipMiss").addEventListener("click", function(e){
-    DCL.AI.showDiagnosePopup({ item_name:"미점검 건수", input_value: LAST_CTX.missCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
+    DCL.AI.showDiagnosePopup({ item_name:DCL.t("page.dashboard.kpi.missLabel"), input_value: LAST_CTX.missCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
   });
   document.getElementById("chipAbn").addEventListener("click", function(e){
-    DCL.AI.showDiagnosePopup({ item_name:"이상 발견 건수", input_value: LAST_CTX.abnormalCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
+    DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.abnormal, input_value: LAST_CTX.abnormalCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
   });
   document.getElementById("chipAction").addEventListener("click", function(e){
     DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.action, input_value: Math.round(LAST_CTX.actionDoneRate*10)/10, lower_limit:90, upper_limit:null, judge_type:"NUMERIC" }, e.currentTarget);

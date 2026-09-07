@@ -58,7 +58,7 @@
     const insp = DCL.getCurrentInspector();
     if (!insp) { location.href = "index.html"; return null; }
     if (allowedRoles && allowedRoles.length && insp.role !== "admin" && !allowedRoles.includes(insp.role)) {
-      DCL.toast("이 화면에 대한 권한이 없습니다", "err");
+      DCL.toast(DCL.t("common.noPermission"), "err");
       setTimeout(()=>location.href = "dashboard.html", 700);
       return null;
     }
@@ -154,7 +154,6 @@
   // ---- 점검주기(cycle_type) 판정 -----------------------------------------------
   // dateStr: "YYYY-MM-DD". 요일/일자 판정은 문자열을 UTC 자정으로 고정 파싱해
   // 호출측(로컬시간대/UTC 기반) 어느쪽에서 만든 날짜문자열이든 동일하게 계산되도록 함.
-  const WEEKDAY_LABEL = ["일","월","화","수","목","금","토"];
   DCL.isDueOn = function(part, dateStr){
     if (!part) return false;
     const type = part.cycle_type || "DAILY";
@@ -171,31 +170,37 @@
     }
     return true; // DAILY
   };
+  DCL.weekdayLabel = function(idx){ return DCL.t("weekday." + idx); };
   DCL.cycleLabel = function(part){
-    if (!part) return "매일";
+    if (!part) return DCL.t("cycle.daily");
     const type = part.cycle_type || "DAILY";
     if (type === "WEEKLY") {
       const days = Array.isArray(part.cycle_weekdays) ? part.cycle_weekdays.slice().sort() : [];
-      return days.length ? "매주 " + days.map(d=>WEEKDAY_LABEL[d]).join(",") : "매주 (요일 미지정)";
+      return days.length ? DCL.t("cycle.weeklyPrefix") + " " + days.map(d=>DCL.weekdayLabel(d)).join(",") : DCL.t("cycle.weeklyUnset");
     }
     if (type === "MONTHLY") {
-      return "매월 " + (part.cycle_day_of_month || 1) + "일";
+      return DCL.t("cycle.monthlyDay", { day: (part.cycle_day_of_month || 1) });
     }
-    return "매일";
+    return DCL.t("cycle.daily");
   };
-  DCL.WEEKDAY_LABEL = WEEKDAY_LABEL;
+  // 구버전 호환용 (일~토 고정 배열이 필요한 곳에서 사용)
+  DCL.WEEKDAY_LABEL = ["일","월","화","수","목","금","토"];
 
   // ---- 사이드바 네비게이션 렌더 -------------------------------------------------
   const NAV_ITEMS = [
-    { href:"dashboard.html",  ico:"📊", label:"대시보드", roles:null },
-    { href:"inspect.html",    ico:"📷", label:"점검 수행(QR)", roles:null },
-    { href:"actions.html",    ico:"🛠️", label:"조치 관리", roles:null },
-    { href:"history.html",    ico:"📜", label:"점검 이력 조회", roles:null },
-    { href:"parts.html",      ico:"📦", label:"부품 마스터", roles:["admin"] },
-    { href:"qr.html",         ico:"🏷️", label:"QR 발행/재발행", roles:["admin"] },
-    { href:"types.html",      ico:"🧩", label:"부품유형/점검항목", roles:["admin"] },
-    { href:"inspectors.html", ico:"👥", label:"점검자 관리", roles:["admin"] }
+    { href:"dashboard.html",  ico:"📊", labelKey:"nav.dashboard", roles:null },
+    { href:"inspect.html",    ico:"📷", labelKey:"nav.inspect", roles:null },
+    { href:"actions.html",    ico:"🛠️", labelKey:"nav.actions", roles:null },
+    { href:"history.html",    ico:"📜", labelKey:"nav.history", roles:null },
+    { href:"parts.html",      ico:"📦", labelKey:"nav.parts", roles:["admin"] },
+    { href:"qr.html",         ico:"🏷️", labelKey:"nav.qr", roles:["admin"] },
+    { href:"types.html",      ico:"🧩", labelKey:"nav.types", roles:["admin"] },
+    { href:"inspectors.html", ico:"👥", labelKey:"nav.inspectors", roles:["admin"] },
+    { href:"i18n-admin.html", ico:"🌐", labelKey:"nav.i18n", roles:["admin"] }
   ];
+  DCL.roleLabel = function(role){
+    return { admin: DCL.t("role.admin"), action_owner: DCL.t("role.action_owner"), inspector: DCL.t("role.inspector") }[role] || role;
+  };
   DCL.renderSidebar = function(activeHref){
     const mount = document.getElementById("sidebarNav");
     if (!mount) return;
@@ -205,14 +210,13 @@
     NAV_ITEMS.forEach(function(item){
       if (item.roles && role !== "admin" && !item.roles.includes(role)) return;
       const active = (item.href === activeHref) ? " active" : "";
-      html += '<a class="nav-item'+active+'" href="'+item.href+'"><span class="ico">'+item.ico+'</span><span>'+item.label+'</span></a>';
+      html += '<a class="nav-item'+active+'" href="'+item.href+'"><span class="ico">'+item.ico+'</span><span>'+DCL.t(item.labelKey)+'</span></a>';
     });
     mount.innerHTML = html;
 
     const who = document.getElementById("sidebarWho");
     if (who && insp) {
-      const roleLabel = {admin:"관리자", action_owner:"조치담당자", inspector:"점검자"}[insp.role] || insp.role;
-      who.innerHTML = '<div class="fw-700">'+insp.name+'</div><div class="text-mute fs-xs">'+roleLabel+(insp.department?(" · "+insp.department):"")+'</div>';
+      who.innerHTML = '<div class="fw-700">'+insp.name+'</div><div class="text-mute fs-xs">'+DCL.roleLabel(insp.role)+(insp.department?(" · "+insp.department):"")+'</div>';
     }
   };
 
@@ -236,7 +240,7 @@
       const btn = document.createElement("div");
       btn.id = "mobileMenuBtn";
       btn.className = "hamburger-btn no-print";
-      btn.title = "메뉴";
+      btn.title = DCL.t("common.menu");
       btn.textContent = "☰";
       btn.addEventListener("click", function(){
         sidebar.classList.contains("open") ? closeNav() : openNav();
@@ -260,6 +264,9 @@
     opts = opts || {};
     DCL.initTheme();
     DCL.registerSW();
+    DCL.applyI18n();       // SEED 사전으로 즉시 번역 적용 (동기, 오프라인에서도 동작)
+    DCL.initLangSwitcher();
+    if (DCL.loadI18nOverrides) DCL.loadI18nOverrides(); // 관리자가 수정한 번역을 백그라운드로 덮어씀
     if (opts.requireRoles !== false) {
       const insp = DCL.requireAuth(opts.roles);
       if (!insp) return null;
@@ -268,7 +275,7 @@
       const logoutBtn = document.getElementById("logoutBtn");
       if (logoutBtn) logoutBtn.addEventListener("click", DCL.logout);
       if (!DCL.isConfigured()) {
-        DCL.toast("Supabase 미설정: js/supabase-config.js 를 채워주세요", "err");
+        DCL.toast(DCL.t("common.toast.notConfigured"), "err");
       }
       return insp;
     }

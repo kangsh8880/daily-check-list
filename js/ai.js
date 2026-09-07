@@ -107,13 +107,13 @@
   AI.mountWidget = function(getContext){
     if (document.getElementById("aiFab")) return;
     const fab = document.createElement("div");
-    fab.id = "aiFab"; fab.className = "ai-fab no-print"; fab.title = "AI 어시스턴트"; fab.textContent = "✦";
+    fab.id = "aiFab"; fab.className = "ai-fab no-print"; fab.title = DCL.t("ai.title"); fab.textContent = "✦";
     const panel = document.createElement("div");
     panel.id = "aiPanel"; panel.className = "ai-panel no-print";
     panel.innerHTML =
-      '<div class="ai-panel-head"><span>✦ AI 어시스턴트</span><span style="cursor:pointer;" id="aiPanelClose">✕</span></div>' +
-      '<div class="ai-panel-body" id="aiPanelBody"><div class="ai-msg">안녕하세요! 점검율, 미점검, 이상현황, 조치 이행율을 물어보세요.</div></div>' +
-      '<div class="ai-panel-input"><input type="text" id="aiPanelInput" placeholder="질문을 입력하세요..."/><button class="btn btn-primary btn-sm" id="aiPanelSend">전송</button></div>';
+      '<div class="ai-panel-head"><span>✦ '+escapeHtml(DCL.t("ai.title"))+'</span><span style="cursor:pointer;" id="aiPanelClose">✕</span></div>' +
+      '<div class="ai-panel-body" id="aiPanelBody"><div class="ai-msg">'+escapeHtml(DCL.t("ai.greeting"))+'</div></div>' +
+      '<div class="ai-panel-input"><input type="text" id="aiPanelInput" placeholder="'+escapeHtml(DCL.t("ai.inputPlaceholder"))+'"/><button class="btn btn-primary btn-sm" id="aiPanelSend">'+escapeHtml(DCL.t("ai.sendBtn"))+'</button></div>';
     document.body.appendChild(fab); document.body.appendChild(panel);
 
     fab.addEventListener("click", ()=> panel.classList.toggle("open"));
@@ -153,29 +153,29 @@
     const rect = anchorEl.getBoundingClientRect();
     popup.style.top = Math.min(rect.bottom + 8, window.innerHeight - 320) + "px";
     popup.style.left = Math.min(rect.left - 260, window.innerWidth - 340) + "px";
-    popup.innerHTML = '<div class="text-mute fs-xs">✦ AI 진단 분석중...</div>';
+    popup.innerHTML = '<div class="text-mute fs-xs">'+escapeHtml(DCL.t("ai.diagnosing"))+'</div>';
     popup.style.display = "block";
 
     const result = await AI.diagnose(anomaly);
     popup.innerHTML =
-      '<div class="flex-between mb-0"><b class="fs-sm">✦ AI 자동진단</b><span style="cursor:pointer;" id="aiDiagClose">✕</span></div>' +
+      '<div class="flex-between mb-0"><b class="fs-sm">'+escapeHtml(DCL.t("ai.diagnoseTitle"))+'</b><span style="cursor:pointer;" id="aiDiagClose">✕</span></div>' +
       '<div class="divider"></div>' +
       '<div class="fs-xs" style="line-height:1.7;">' +
-      '<div><b class="text-red">원인</b> '+escapeHtml(result.cause)+'</div>' +
-      '<div class="mt-8"><b class="text-red">영향</b> '+escapeHtml(result.impact)+'</div>' +
-      '<div class="mt-8"><b class="text-blue">즉시조치</b> '+escapeHtml(result.immediate)+'</div>' +
-      '<div class="mt-8"><b class="text-blue">단기조치</b> '+escapeHtml(result.shortterm)+'</div>' +
-      '<div class="mt-8"><b class="text-blue">재발방지</b> '+escapeHtml(result.prevention)+'</div>' +
+      '<div><b class="text-red">'+escapeHtml(DCL.t("ai.cause"))+'</b> '+escapeHtml(result.cause)+'</div>' +
+      '<div class="mt-8"><b class="text-red">'+escapeHtml(DCL.t("ai.impact"))+'</b> '+escapeHtml(result.impact)+'</div>' +
+      '<div class="mt-8"><b class="text-blue">'+escapeHtml(DCL.t("ai.immediate"))+'</b> '+escapeHtml(result.immediate)+'</div>' +
+      '<div class="mt-8"><b class="text-blue">'+escapeHtml(DCL.t("ai.shortterm"))+'</b> '+escapeHtml(result.shortterm)+'</div>' +
+      '<div class="mt-8"><b class="text-blue">'+escapeHtml(DCL.t("ai.prevention"))+'</b> '+escapeHtml(result.prevention)+'</div>' +
       '</div>' +
-      '<div class="form-row mt-14" style="margin-bottom:0;"><label style="margin-bottom:4px;">이 항목에 대해 추가 질문</label>' +
-      '<div class="flex gap-6"><input type="text" id="aiDiagQ" placeholder="예: 재발 방지책을 더 알려줘"/><button class="btn btn-sm btn-primary" id="aiDiagAsk">질문</button></div>' +
+      '<div class="form-row mt-14" style="margin-bottom:0;"><label style="margin-bottom:4px;">'+escapeHtml(DCL.t("ai.additionalQLabel"))+'</label>' +
+      '<div class="flex gap-6"><input type="text" id="aiDiagQ" placeholder="'+escapeHtml(DCL.t("ai.additionalQPlaceholder"))+'"/><button class="btn btn-sm btn-primary" id="aiDiagAsk">'+escapeHtml(DCL.t("ai.askBtn"))+'</button></div>' +
       '<div id="aiDiagAns" class="mt-8 fs-xs"></div></div>';
 
     document.getElementById("aiDiagClose").addEventListener("click", ()=> popup.style.display="none");
     document.getElementById("aiDiagAsk").addEventListener("click", async function(){
       const q = document.getElementById("aiDiagQ").value.trim();
       if (!q) return;
-      document.getElementById("aiDiagAns").textContent = "분석중...";
+      document.getElementById("aiDiagAns").textContent = DCL.t("ai.analyzing");
       const ans = await AI.ask(q, anomaly);
       document.getElementById("aiDiagAns").textContent = ans;
     });

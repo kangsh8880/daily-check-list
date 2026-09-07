@@ -51,28 +51,28 @@ function renderTable(){
   let list = ALL_ACTIONS.slice();
   if (status) list = list.filter(a=>a.status===status);
 
-  const sevBadge = { MINOR:'<span class="badge badge-gray">경미</span>', MAJOR:'<span class="badge badge-yellow">중대</span>', CRITICAL:'<span class="badge badge-red">긴급</span>' };
-  const statusBadge = { OPEN:'<span class="badge badge-red">대기</span>', IN_PROGRESS:'<span class="badge badge-yellow">조치중</span>', DONE:'<span class="badge badge-blue">완료(승인대기)</span>', APPROVED:'<span class="badge badge-green">승인완료</span>', REJECTED:'<span class="badge badge-red">반려</span>' };
+  const sevBadge = { MINOR:`<span class="badge badge-gray">${DCL.t("sev.MINOR")}</span>`, MAJOR:`<span class="badge badge-yellow">${DCL.t("sev.MAJOR")}</span>`, CRITICAL:`<span class="badge badge-red">${DCL.t("sev.CRITICAL")}</span>` };
+  const statusBadge = { OPEN:`<span class="badge badge-red">${DCL.t("status.OPEN")}</span>`, IN_PROGRESS:`<span class="badge badge-yellow">${DCL.t("status.IN_PROGRESS")}</span>`, DONE:`<span class="badge badge-blue">${DCL.t("status.DONE")}</span>`, APPROVED:`<span class="badge badge-green">${DCL.t("status.APPROVED")}</span>`, REJECTED:`<span class="badge badge-red">${DCL.t("status.REJECTED")}</span>` };
 
   const body = document.getElementById("actionsBody");
-  if (!list.length) { body.innerHTML = '<tr><td colspan="7" class="empty-state">조치 항목이 없습니다</td></tr>'; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="7" class="empty-state">${DCL.t("page.actions.emptyList")}</td></tr>`; return; }
 
   body.innerHTML = list.map(a => {
     const p = partMap[a.part_id];
     const overdue = ["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today;
     let actionsHtml = "";
-    if (a.status === "OPEN") actionsHtml = `<button class="btn btn-sm btn-primary" onclick="openAssign('${a.id}')">담당자 지정</button>`;
-    else if (a.status === "IN_PROGRESS") actionsHtml = `<button class="btn btn-sm btn-success" onclick="openComplete('${a.id}')">완료 등록</button> <button class="btn btn-sm" onclick="openAssign('${a.id}')">재지정</button>`;
-    else if (a.status === "DONE") actionsHtml = `<button class="btn btn-sm btn-primary" onclick="openReview('${a.id}')">확인/승인</button>`;
-    else if (a.status === "REJECTED") actionsHtml = `<button class="btn btn-sm" onclick="openAssign('${a.id}')">재조치 지정</button>`;
-    else actionsHtml = '<span class="text-mute fs-xs">완료됨</span>';
+    if (a.status === "OPEN") actionsHtml = `<button class="btn btn-sm btn-primary" onclick="openAssign('${a.id}')">${DCL.t("page.actions.btnAssign")}</button>`;
+    else if (a.status === "IN_PROGRESS") actionsHtml = `<button class="btn btn-sm btn-success" onclick="openComplete('${a.id}')">${DCL.t("page.actions.btnComplete")}</button> <button class="btn btn-sm" onclick="openAssign('${a.id}')">${DCL.t("page.actions.btnReassign")}</button>`;
+    else if (a.status === "DONE") actionsHtml = `<button class="btn btn-sm btn-primary" onclick="openReview('${a.id}')">${DCL.t("page.actions.btnReview")}</button>`;
+    else if (a.status === "REJECTED") actionsHtml = `<button class="btn btn-sm" onclick="openAssign('${a.id}')">${DCL.t("page.actions.btnReassignAfterReject")}</button>`;
+    else actionsHtml = `<span class="text-mute fs-xs">${DCL.t("page.actions.doneStatic")}</span>`;
 
     return `<tr>
       <td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td>
       <td style="max-width:220px;">${esc(a.issue_desc)}</td>
       <td>${sevBadge[a.severity]||a.severity}</td>
       <td class="text-mute">${a.assignee_id ? esc(inspMap[a.assignee_id]?.name||"-") : "-"}</td>
-      <td class="${overdue?'text-red':'text-mute'}">${a.due_date ? DCL.fmtDate(a.due_date) : "-"}${overdue?' (지연)':''}</td>
+      <td class="${overdue?'text-red':'text-mute'}">${a.due_date ? DCL.fmtDate(a.due_date) : "-"}${overdue?' '+DCL.t("page.actions.overdueTag"):''}</td>
       <td>${statusBadge[a.status]}</td>
       <td class="row-actions">${actionsHtml}</td>
     </tr>`;
@@ -97,7 +97,7 @@ async function confirmAssign(){
   const due = document.getElementById("assignDue").value || null;
   try{
     await DCL.rpc("fn_assign_action", { p_action_id:id, p_assignee_id:assignee, p_due_date:due, p_severity:severity });
-    DCL.toast("담당자가 지정되었습니다");
+    DCL.toast(DCL.t("page.actions.assignedToast"));
     DCL.closeModal("assignModalOverlay");
     await loadAll();
   }catch(e){}
@@ -115,12 +115,12 @@ function openComplete(id){
 async function confirmComplete(){
   const id = document.getElementById("completeActionId").value;
   const taken = document.getElementById("completeTaken").value.trim();
-  if (!taken) { DCL.toast("조치 내용을 입력하세요", "err"); return; }
+  if (!taken) { DCL.toast(DCL.t("page.actions.enterActionTaken"), "err"); return; }
   const photoUrl = document.getElementById("completePhoto").dataset.url || null;
   const insp = DCL.getCurrentInspector();
   try{
     await DCL.rpc("fn_complete_action", { p_action_id:id, p_action_taken:taken, p_photo_url:photoUrl, p_by: insp.id });
-    DCL.toast("조치 완료가 등록되었습니다. 승인 대기중입니다.");
+    DCL.toast(DCL.t("page.actions.completedRegistered"));
     DCL.closeModal("completeModalOverlay");
     await loadAll();
   }catch(e){}
@@ -131,13 +131,13 @@ function openReview(id){
   const a = ALL_ACTIONS.find(x=>x.id===id);
   const body = document.getElementById("reviewBody");
   body.innerHTML = `
-    <div class="form-row"><label>이상 내용</label><div>${esc(a.issue_desc)}</div></div>
-    <div class="form-row"><label>조치 내용</label><div>${esc(a.action_taken||"-")}</div></div>
-    ${a.action_photo_url ? `<div class="form-row"><label>조치 사진</label><img src="${a.action_photo_url}" style="max-width:220px;border-radius:8px;border:1px solid var(--border);"/></div>` : ""}
-    <div class="form-row"><label>반려 사유 (반려 시 입력)</label><textarea id="reviewRejectReason" rows="2" placeholder="반려 사유를 입력하세요"></textarea></div>
+    <div class="form-row"><label>${DCL.t("page.actions.issueLabel")}</label><div>${esc(a.issue_desc)}</div></div>
+    <div class="form-row"><label>${DCL.t("page.actions.actionTakenViewLabel")}</label><div>${esc(a.action_taken||"-")}</div></div>
+    ${a.action_photo_url ? `<div class="form-row"><label>${DCL.t("page.actions.photoViewLabel")}</label><img src="${a.action_photo_url}" style="max-width:220px;border-radius:8px;border:1px solid var(--border);"/></div>` : ""}
+    <div class="form-row"><label>${DCL.t("page.actions.rejectReasonLabel")}</label><textarea id="reviewRejectReason" rows="2" placeholder="${DCL.t("page.actions.rejectReasonPlaceholder")}"></textarea></div>
     <div class="form-actions">
-      <button class="btn btn-danger" id="rejectBtn">반려</button>
-      <button class="btn btn-success" id="approveBtn">승인</button>
+      <button class="btn btn-danger" id="rejectBtn">${DCL.t("common.reject")}</button>
+      <button class="btn btn-success" id="approveBtn">${DCL.t("common.approve")}</button>
     </div>`;
   document.getElementById("approveBtn").addEventListener("click", ()=> review(id, true));
   document.getElementById("rejectBtn").addEventListener("click", ()=> review(id, false));
@@ -145,11 +145,11 @@ function openReview(id){
 }
 async function review(id, approve){
   const reason = document.getElementById("reviewRejectReason").value.trim();
-  if (!approve && !reason) { DCL.toast("반려 사유를 입력하세요", "err"); return; }
+  if (!approve && !reason) { DCL.toast(DCL.t("page.actions.enterRejectReason"), "err"); return; }
   const insp = DCL.getCurrentInspector();
   try{
     await DCL.rpc("fn_review_action", { p_action_id:id, p_approve:approve, p_by:insp.id, p_reject_reason: approve?null:reason });
-    DCL.toast(approve ? "승인되었습니다" : "반려되었습니다");
+    DCL.toast(approve ? DCL.t("page.actions.approvedToast") : DCL.t("page.actions.rejectedToast"));
     DCL.closeModal("reviewModalOverlay");
     await loadAll();
   }catch(e){}

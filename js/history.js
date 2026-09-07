@@ -44,7 +44,7 @@ async function loadMasters(){
     DCL.select("inspectors", q => q.eq("is_active", true).order("name"))
   ]);
   const sel = document.getElementById("filterInspector");
-  sel.innerHTML = '<option value="">전체</option>' + ALL_INSPECTORS.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join("");
+  sel.innerHTML = `<option value="">${DCL.t("common.all")}</option>` + ALL_INSPECTORS.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join("");
 }
 
 // 날짜 범위는 서버(Supabase) 조회 시점에 필터링 (데이터량 방어) - 부품/점검자/결과는 클라이언트에서 필터링
@@ -52,8 +52,8 @@ async function loadRange(){
   const start = document.getElementById("filterStartDate").value;
   const end = document.getElementById("filterEndDate").value;
   if (!start || !end) return;
-  if (start > end) { DCL.toast("시작일이 종료일보다 늦을 수 없습니다", "err"); return; }
-  document.getElementById("historyBody").innerHTML = '<tr><td colspan="8" class="empty-state">불러오는 중...</td></tr>';
+  if (start > end) { DCL.toast(DCL.t("page.history.startAfterEnd"), "err"); return; }
+  document.getElementById("historyBody").innerHTML = `<tr><td colspan="8" class="empty-state">${DCL.t("common.loading")}</td></tr>`;
   RANGE_INSPECTIONS = await DCL.select("inspections", q => q.gte("inspect_date", start).lte("inspect_date", end).order("inspected_at", {ascending:false}));
   renderTable();
 }
@@ -75,15 +75,15 @@ function renderTable(){
   });
 
   const abnCnt = list.filter(i=>i.overall_result==="ABNORMAL").length;
-  document.getElementById("resultSummary").textContent = `총 ${DCL.fmtCount(list.length)}건 (이상 ${DCL.fmtCount(abnCnt)}건)`;
+  document.getElementById("resultSummary").textContent = DCL.t("page.history.summary", {total: DCL.fmtCount(list.length), abn: DCL.fmtCount(abnCnt)});
 
   const body = document.getElementById("historyBody");
-  if (!list.length) { body.innerHTML = '<tr><td colspan="8" class="empty-state">조건에 맞는 점검 이력이 없습니다</td></tr>'; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="8" class="empty-state">${DCL.t("page.history.emptyList")}</td></tr>`; return; }
   body.innerHTML = list.map(i=>{
     const p = partMap[i.part_id] || {};
     const t = typeMap[p.part_type_id];
     const insp = inspMap[i.inspector_id];
-    const resultBadge = i.overall_result === "ABNORMAL" ? '<span class="badge badge-red">이상</span>' : '<span class="badge badge-green">정상</span>';
+    const resultBadge = i.overall_result === "ABNORMAL" ? `<span class="badge badge-red">${DCL.t("result.ABNORMAL")}</span>` : `<span class="badge badge-green">${DCL.t("result.NORMAL")}</span>`;
     return `<tr>
       <td class="text-mute">${DCL.fmtDateTime(i.inspected_at)}</td>
       <td class="mono"><b>${esc(p.part_code||"-")}</b></td>
@@ -92,7 +92,7 @@ function renderTable(){
       <td>${esc(insp?insp.name:"-")}</td>
       <td>${resultBadge}</td>
       <td class="text-mute" style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(i.note||"-")}</td>
-      <td><button class="btn btn-sm" onclick="showDetail('${i.id}')">보기</button></td>
+      <td><button class="btn btn-sm" onclick="showDetail('${i.id}')">${DCL.t("page.history.viewBtn")}</button></td>
     </tr>`;
   }).join("");
 }
@@ -106,7 +106,7 @@ async function showDetail(id){
   const insp = inspMap[insp0.inspector_id];
 
   const body = document.getElementById("detailBody");
-  body.innerHTML = '<div class="empty-state">불러오는 중...</div>';
+  body.innerHTML = `<div class="empty-state">${DCL.t("common.loading")}</div>`;
   DCL.openModal("detailModalOverlay");
 
   const [results, actions] = await Promise.all([
@@ -115,12 +115,12 @@ async function showDetail(id){
   ]);
 
   const resultRows = results.map(r=>{
-    const badge = r.judge_result === "ABNORMAL" ? '<span class="badge badge-red">이상</span>' : '<span class="badge badge-green">정상</span>';
+    const badge = r.judge_result === "ABNORMAL" ? `<span class="badge badge-red">${DCL.t("result.ABNORMAL")}</span>` : `<span class="badge badge-green">${DCL.t("result.NORMAL")}</span>`;
     return `<tr><td>${esc(r.item_name)}</td><td class="mono">${esc(r.input_value||"-")}</td><td>${badge}</td></tr>`;
   }).join("");
 
   const actionRows = actions.length ? actions.map(a=>{
-    const statusLabel = {OPEN:"대기", IN_PROGRESS:"조치중", DONE:"완료(승인대기)", APPROVED:"승인완료", REJECTED:"반려"}[a.status] || a.status;
+    const statusLabel = {OPEN:DCL.t("status.OPEN"), IN_PROGRESS:DCL.t("status.IN_PROGRESS"), DONE:DCL.t("status.DONE"), APPROVED:DCL.t("status.APPROVED"), REJECTED:DCL.t("status.REJECTED")}[a.status] || a.status;
     return `<div class="text-mute fs-xs" style="margin-top:4px;">└ ${esc(a.issue_desc)} → <b>${esc(statusLabel)}</b></div>`;
   }).join("") : "";
 
@@ -136,11 +136,11 @@ async function showDetail(id){
       </div>
     </div>
     <div class="table-wrap">
-      <table><thead><tr><th>점검항목</th><th>측정값</th><th>판정</th></tr></thead>
-      <tbody>${resultRows || '<tr><td colspan="3" class="empty-state">세부 항목이 없습니다</td></tr>'}</tbody></table>
+      <table><thead><tr><th>${DCL.t("page.history.checklistItemCol")}</th><th>${DCL.t("page.history.measuredValueCol")}</th><th>${DCL.t("page.history.judgeCol")}</th></tr></thead>
+      <tbody>${resultRows || `<tr><td colspan="3" class="empty-state">${DCL.t("page.history.noItemDetail")}</td></tr>`}</tbody></table>
     </div>
-    ${insp0.note ? `<div class="form-row mt-14 mb-0"><label>종합 의견</label><div>${esc(insp0.note)}</div></div>` : ""}
-    ${actionRows ? `<div class="divider"></div><div class="hint fs-xs fw-700" style="margin-bottom:4px;">관련 조치</div>${actionRows}` : ""}
+    ${insp0.note ? `<div class="form-row mt-14 mb-0"><label>${DCL.t("page.history.overallNote")}</label><div>${esc(insp0.note)}</div></div>` : ""}
+    ${actionRows ? `<div class="divider"></div><div class="hint fs-xs fw-700" style="margin-bottom:4px;">${DCL.t("page.history.relatedAction")}</div>${actionRows}` : ""}
   `;
 }
 

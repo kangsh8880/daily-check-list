@@ -28,7 +28,7 @@ async function loadAll(){
   ]);
 
   const ft = document.getElementById("filterType");
-  ft.innerHTML = '<option value="">전체 유형</option>' + ALL_TYPES.map(t=>`<option value="${t.id}">${esc(t.type_name)}</option>`).join("");
+  ft.innerHTML = `<option value="">${DCL.t("common.allTypes")}</option>` + ALL_TYPES.map(t=>`<option value="${t.id}">${esc(t.type_name)}</option>`).join("");
 
   const modalType = document.getElementById("partType");
   modalType.innerHTML = ALL_TYPES.map(t=>`<option value="${t.id}">${esc(t.type_name)} (${t.code_prefix})</option>`).join("");
@@ -51,24 +51,24 @@ function renderTable(){
   const assignByPart = {};
   ALL_ASSIGNMENTS.forEach(a => { (assignByPart[a.part_id] = assignByPart[a.part_id]||[]).push(a.inspector_id); });
 
-  const statusBadge = { IN_USE:'<span class="badge badge-blue">사용중</span>', STORAGE:'<span class="badge badge-gray">보관중</span>', DISPOSED:'<span class="badge badge-red">폐기</span>' };
+  const statusBadge = { IN_USE:`<span class="badge badge-blue">${DCL.t("common.status.inUse")}</span>`, STORAGE:`<span class="badge badge-gray">${DCL.t("common.status.storage")}</span>`, DISPOSED:`<span class="badge badge-red">${DCL.t("common.status.disposed")}</span>` };
 
   // 담당자 미배정 경고: 점검율 집계 대상인 "사용중" 부품 중 배정된 담당자가 없는 건수 (전체 기준, 필터와 무관)
   const unassignedInUseCnt = ALL_PARTS.filter(p => p.status === "IN_USE" && !(assignByPart[p.id]||[]).length).length;
   const hintEl = document.getElementById("unassignedHint");
   if (hintEl) hintEl.innerHTML = unassignedInUseCnt > 0
-    ? `<span class="text-red fw-700">⚠ 사용중 부품 중 담당자 미배정 ${unassignedInUseCnt}건</span>` : "";
+    ? `<span class="text-red fw-700">${DCL.t("page.parts.unassignedWarning", {n: unassignedInUseCnt})}</span>` : "";
 
   const body = document.getElementById("partsBody");
-  if (!list.length) { body.innerHTML = '<tr><td colspan="10" class="empty-state">등록된 부품이 없습니다. + 부품 등록으로 추가하세요.</td></tr>'; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="10" class="empty-state">${DCL.t("page.parts.emptyList")}</td></tr>`; return; }
 
   body.innerHTML = list.map(p => {
     const t = typeMap[p.part_type_id];
     const names = (assignByPart[p.id]||[]).map(id => inspMap[id]?.name).filter(Boolean);
-    const qrBadge = p.qr_issued_at ? `<span class="badge badge-green">v${p.qr_version}</span>` : '<span class="badge badge-yellow">미발행</span>';
+    const qrBadge = p.qr_issued_at ? `<span class="badge badge-green">v${p.qr_version}</span>` : `<span class="badge badge-yellow">${DCL.t("common.notIssued")}</span>`;
     // 사용중인데 담당자가 없으면 점검율 미이행 위험 -> 빨간 경고 배지. 보관중/폐기는 배정이 필요없으므로 회색 유지.
     const assignCell = names.length ? esc(names.join(", "))
-      : (p.status === "IN_USE" ? '<span class="badge badge-red">⚠ 미배정</span>' : '<span class="badge badge-gray">미배정</span>');
+      : (p.status === "IN_USE" ? `<span class="badge badge-red">${DCL.t("common.unassignedBadge")}</span>` : `<span class="badge badge-gray">${DCL.t("common.unassigned")}</span>`);
     return `<tr>
       <td class="mono"><b>${esc(p.part_code)}</b></td>
       <td>${esc(p.part_name)}</td>
@@ -80,9 +80,9 @@ function renderTable(){
       <td class="text-mute" style="max-width:140px;">${assignCell}</td>
       <td>${qrBadge}</td>
       <td class="row-actions">
-        <button class="btn btn-sm" onclick="openPartModalById('${p.id}')">수정</button>
+        <button class="btn btn-sm" onclick="openPartModalById('${p.id}')">${DCL.t("page.parts.editBtn")}</button>
         <a class="btn btn-sm" href="qr.html?part=${p.id}">QR</a>
-        <button class="btn btn-sm btn-danger" onclick="deletePart('${p.id}','${escAttr(p.part_name)}')">삭제</button>
+        <button class="btn btn-sm btn-danger" onclick="deletePart('${p.id}','${escAttr(p.part_name)}')">${DCL.t("page.parts.deleteBtn")}</button>
       </td>
     </tr>`;
   }).join("");
@@ -91,11 +91,11 @@ function renderTable(){
 function openPartModalById(id){ openPartModal(ALL_PARTS.find(p=>p.id===id)); }
 
 function openPartModal(p){
-  document.getElementById("partModalTitle").textContent = p ? "부품 수정" : "부품 등록";
+  document.getElementById("partModalTitle").textContent = p ? DCL.t("page.parts.modalTitleEdit") : DCL.t("page.parts.modalTitleNew");
   document.getElementById("partId").value = p ? p.id : "";
   document.getElementById("partType").value = p ? p.part_type_id : (ALL_TYPES[0]?.id||"");
   document.getElementById("partType").disabled = !!p; // 유형은 등록 후 변경 불가(코드체계 유지)
-  document.getElementById("partCodeView").value = p ? p.part_code : "저장 시 자동 채번됩니다";
+  document.getElementById("partCodeView").value = p ? p.part_code : DCL.t("page.parts.codeViewPlaceholder");
   document.getElementById("partName").value = p ? p.part_name : "";
   document.getElementById("partSpec").value = p ? (p.spec||"") : "";
   document.getElementById("partLocation").value = p ? (p.location||"") : "";
@@ -142,8 +142,8 @@ function readCycleFields(){
 function renderAssignedChips(partId){
   const inspMap = Object.fromEntries(ALL_INSPECTORS.map(i=>[i.id,i]));
   const mount = document.getElementById("assignedList");
-  if (!partId) { mount.innerHTML = '<span class="text-mute fs-xs">부품을 먼저 저장하면 담당자를 배정할 수 있습니다</span>'; return; }
-  if (!CURRENT_PART_ASSIGNS.length) { mount.innerHTML = '<span class="text-mute fs-xs">배정된 담당자가 없습니다</span>'; return; }
+  if (!partId) { mount.innerHTML = `<span class="text-mute fs-xs">${DCL.t("page.parts.assignSaveHint")}</span>`; return; }
+  if (!CURRENT_PART_ASSIGNS.length) { mount.innerHTML = `<span class="text-mute fs-xs">${DCL.t("page.parts.noAssignedYet")}</span>`; return; }
   mount.innerHTML = CURRENT_PART_ASSIGNS.map(id => {
     const name = inspMap[id]?.name || "?";
     return `<span class="badge badge-blue">${esc(name)} <span style="cursor:pointer; margin-left:4px;" onclick="removeAssignment('${partId}','${id}')">✕</span></span>`;
@@ -154,14 +154,14 @@ async function addAssignment(){
   const partId = document.getElementById("partId").value;
   const inspectorId = document.getElementById("assignInspectorSelect").value;
   if (!partId || !inspectorId) return;
-  if (CURRENT_PART_ASSIGNS.includes(inspectorId)) { DCL.toast("이미 배정된 담당자입니다", "err"); return; }
+  if (CURRENT_PART_ASSIGNS.includes(inspectorId)) { DCL.toast(DCL.t("page.parts.alreadyAssignedToast"), "err"); return; }
   try{
     await DCL.rpc("fn_set_assignment", { p_part_id:partId, p_inspector_id:inspectorId, p_active:true });
     CURRENT_PART_ASSIGNS.push(inspectorId);
     renderAssignedChips(partId);
     ALL_ASSIGNMENTS.push({part_id:partId, inspector_id:inspectorId, is_active:true});
     renderTable();
-    DCL.toast("담당자가 배정되었습니다");
+    DCL.toast(DCL.t("page.parts.assignedToast"));
   }catch(e){}
 }
 async function removeAssignment(partId, inspectorId){
@@ -171,41 +171,41 @@ async function removeAssignment(partId, inspectorId){
     renderAssignedChips(partId);
     ALL_ASSIGNMENTS = ALL_ASSIGNMENTS.filter(a=>!(a.part_id===partId && a.inspector_id===inspectorId));
     renderTable();
-    DCL.toast("배정이 해제되었습니다");
+    DCL.toast(DCL.t("page.parts.unassignedToast"));
   }catch(e){}
 }
 
 async function savePart(){
   const name = document.getElementById("partName").value.trim();
   const typeId = document.getElementById("partType").value;
-  if (!name || !typeId) { DCL.toast("부품유형과 부품명은 필수입니다", "err"); return; }
+  if (!name || !typeId) { DCL.toast(DCL.t("page.parts.requiredNameType"), "err"); return; }
   const id = document.getElementById("partId").value;
   const spec = document.getElementById("partSpec").value.trim();
   const location = document.getElementById("partLocation").value.trim();
   const dept = document.getElementById("partDept").value.trim();
   const status = document.getElementById("partStatus").value;
   const purchaseDate = document.getElementById("partPurchaseDate").value || null;
-  if (!purchaseDate) { DCL.toast("구매일자는 필수입니다 (부품코드 채번에 사용됩니다)", "err"); return; }
+  if (!purchaseDate) { DCL.toast(DCL.t("page.parts.requiredPurchaseDate"), "err"); return; }
   const cycle = readCycleFields();
   if (cycle.cycle_type === "WEEKLY" && (!cycle.cycle_weekdays || !cycle.cycle_weekdays.length)) {
-    DCL.toast("매주 점검 요일을 1개 이상 선택하세요", "err"); return;
+    DCL.toast(DCL.t("page.parts.weeklyDaysRequired"), "err"); return;
   }
   if (cycle.cycle_type === "MONTHLY" && (!cycle.cycle_day_of_month || cycle.cycle_day_of_month < 1 || cycle.cycle_day_of_month > 31)) {
-    DCL.toast("매월 점검일자를 1~31 사이로 입력하세요", "err"); return;
+    DCL.toast(DCL.t("page.parts.monthlyDayRequired"), "err"); return;
   }
 
   try{
     if (id) {
       await DCL.rpc("fn_update_part", { p_id:id, p_part_name:name, p_spec:spec, p_location:location, p_department:dept, p_status:status, p_purchase_date:purchaseDate,
         p_cycle_type: cycle.cycle_type, p_cycle_weekdays: cycle.cycle_weekdays, p_cycle_day_of_month: cycle.cycle_day_of_month });
-      DCL.toast("수정되었습니다");
+      DCL.toast(DCL.t("page.parts.updatedToast"));
       DCL.closeModal("partModalOverlay");
       await loadAll();
     } else {
       const res = await DCL.rpc("fn_create_part", { p_part_name:name, p_part_type_id:typeId, p_spec:spec, p_location:location, p_department:dept, p_purchase_date:purchaseDate,
         p_cycle_type: cycle.cycle_type, p_cycle_weekdays: cycle.cycle_weekdays, p_cycle_day_of_month: cycle.cycle_day_of_month });
       const created = Array.isArray(res) ? res[0] : res;
-      DCL.toast(`등록 완료: ${created?.part_code || ""}`);
+      DCL.toast(DCL.t("page.parts.registeredToast", {code: created?.part_code || ""}));
       await loadAll();
       // 담당자 배정을 이어서 할 수 있도록 방금 등록한 부품으로 모달 재오픈
       const newPart = ALL_PARTS.find(p=>p.part_code === created?.part_code);
@@ -215,10 +215,10 @@ async function savePart(){
 }
 
 async function deletePart(id, name){
-  if (!confirm(`'${name}' 부품을 삭제하시겠습니까?`)) return;
+  if (!confirm(DCL.t("page.parts.confirmDelete", {name}))) return;
   try{
     await DCL.rpc("fn_delete_part", { p_id:id });
-    DCL.toast("삭제되었습니다");
+    DCL.toast(DCL.t("common.toast.deleted"));
     await loadAll();
   }catch(e){}
 }

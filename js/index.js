@@ -4,6 +4,9 @@
 document.addEventListener("DOMContentLoaded", async function(){
   DCL.initTheme();
   DCL.registerSW();
+  DCL.applyI18n();
+  DCL.initLangSwitcher();
+  if (DCL.loadI18nOverrides) DCL.loadI18nOverrides();
 
   if (!DCL.isConfigured()) {
     document.getElementById("setupWarning").style.display = "block";
@@ -17,13 +20,12 @@ document.addEventListener("DOMContentLoaded", async function(){
   const sel = document.getElementById("inspectorSelect");
   sel.innerHTML = "";
   if (!inspectors.length) {
-    sel.innerHTML = '<option value="">등록된 점검자가 없습니다</option>';
+    sel.innerHTML = '<option value="">' + DCL.t("page.index.noInspectorsOption") + '</option>';
   } else {
     inspectors.forEach(function(i){
       const opt = document.createElement("option");
       opt.value = i.id;
-      const roleLabel = {admin:"관리자", action_owner:"조치담당자", inspector:"점검자"}[i.role] || i.role;
-      opt.textContent = i.name + (i.emp_no ? " ("+i.emp_no+")" : "") + " · " + roleLabel;
+      opt.textContent = i.name + (i.emp_no ? " ("+i.emp_no+")" : "") + " · " + DCL.roleLabel(i.role);
       opt.dataset.pin = i.pin || "";
       opt.dataset.payload = JSON.stringify(i);
       sel.appendChild(opt);
@@ -41,11 +43,11 @@ document.addEventListener("DOMContentLoaded", async function(){
 
   document.getElementById("loginBtn").addEventListener("click", function(){
     const opt = sel.options[sel.selectedIndex];
-    if (!opt || !opt.value) { DCL.toast("점검자를 선택하세요", "err"); return; }
+    if (!opt || !opt.value) { DCL.toast(DCL.t("page.index.selectInspectorToast"), "err"); return; }
     const inspector = JSON.parse(opt.dataset.payload);
     if (opt.dataset.pin) {
       const pin = document.getElementById("pinInput").value.trim();
-      if (pin !== opt.dataset.pin) { DCL.toast("PIN이 일치하지 않습니다", "err"); return; }
+      if (pin !== opt.dataset.pin) { DCL.toast(DCL.t("page.index.pinMismatchToast"), "err"); return; }
     }
     DCL.setCurrentInspector(inspector);
     location.href = "dashboard.html";

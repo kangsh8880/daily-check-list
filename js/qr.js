@@ -43,7 +43,7 @@ async function loadAll(){
     DCL.select("parts", q => q.eq("is_deleted", false).order("created_at", {ascending:false}))
   ]);
   const ft = document.getElementById("filterType");
-  ft.innerHTML = '<option value="">전체 유형</option>' + ALL_TYPES.map(t=>`<option value="${t.id}">${esc(t.type_name)}</option>`).join("");
+  ft.innerHTML = `<option value="">${DCL.t("common.allTypes")}</option>` + ALL_TYPES.map(t=>`<option value="${t.id}">${esc(t.type_name)}</option>`).join("");
   renderTable();
 }
 
@@ -57,7 +57,7 @@ function renderTable(){
   if (kw) list = list.filter(p=>p.part_name.toLowerCase().includes(kw)||p.part_code.toLowerCase().includes(kw));
 
   const body = document.getElementById("partsBody");
-  if (!list.length) { body.innerHTML = '<tr><td colspan="7" class="empty-state">부품이 없습니다</td></tr>'; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="7" class="empty-state">${DCL.t("page.qr.emptyParts")}</td></tr>`; return; }
   body.innerHTML = list.map(p => `
     <tr>
       <td><input type="checkbox" class="rowchk" data-id="${p.id}"/></td>
@@ -65,10 +65,10 @@ function renderTable(){
       <td>${esc(p.part_name)}</td>
       <td class="text-mute">${esc(typeMap[p.part_type_id]?.type_name||"-")}</td>
       <td><span class="badge ${p.qr_issued_at?'badge-green':'badge-yellow'}">v${p.qr_version}</span></td>
-      <td class="text-mute">${p.qr_issued_at ? DCL.fmtDate(p.qr_issued_at) : "미발행"}</td>
+      <td class="text-mute">${p.qr_issued_at ? DCL.fmtDate(p.qr_issued_at) : DCL.t("common.notIssued")}</td>
       <td class="row-actions">
-        <button class="btn btn-sm" onclick="previewOne('${p.id}')">미리보기</button>
-        <button class="btn btn-sm btn-danger" onclick="openReissue('${p.id}')">재발행</button>
+        <button class="btn btn-sm" onclick="previewOne('${p.id}')">${DCL.t("page.qr.previewBtn")}</button>
+        <button class="btn btn-sm btn-danger" onclick="openReissue('${p.id}')">${DCL.t("page.qr.reissueBtn")}</button>
       </td>
     </tr>`).join("");
 }
@@ -83,7 +83,7 @@ async function previewOne(id){
 async function printSelected(){
   const ids = Array.from(document.querySelectorAll(".rowchk:checked")).map(c=>c.dataset.id);
   const area = document.getElementById("printArea");
-  if (!ids.length) { area.innerHTML = '<div class="empty-state no-print">인쇄할 부품을 선택 후 다시 시도하세요</div>'; return; }
+  if (!ids.length) { area.innerHTML = `<div class="empty-state no-print">${DCL.t("page.qr.selectPartsFirst")}</div>`; return; }
   const selected = ALL_PARTS.filter(p=>ids.includes(p.id));
 
   area.innerHTML = selected.map(p => `
@@ -94,7 +94,7 @@ async function printSelected(){
     </div>`).join("");
 
   if (typeof QRCode === "undefined") {
-    area.innerHTML = '<div class="empty-state no-print">QR 생성 라이브러리를 불러오지 못했습니다 (네트워크 확인 필요). 페이지를 새로고침해보세요.</div>';
+    area.innerHTML = `<div class="empty-state no-print">${DCL.t("page.qr.libFail")}</div>`;
     return;
   }
 
@@ -117,9 +117,9 @@ async function openReissue(id){
   document.getElementById("reissueReason").value = "";
   const logs = await DCL.select("qr_reissue_log", q => q.eq("part_id", id).order("reissued_at", {ascending:false}));
   const hist = document.getElementById("reissueHistory");
-  if (!logs.length) { hist.innerHTML = '<div class="empty-state" style="padding:14px;">재발행 이력이 없습니다</div>'; }
+  if (!logs.length) { hist.innerHTML = `<div class="empty-state" style="padding:14px;">${DCL.t("page.qr.noHistory")}</div>`; }
   else {
-    hist.innerHTML = '<table><thead><tr><th>버전</th><th>일시</th><th>사유</th></tr></thead><tbody>' +
+    hist.innerHTML = `<table><thead><tr><th>${DCL.t("common.col.version")}</th><th>${DCL.t("common.col.datetime")}</th><th>${DCL.t("common.col.reason")}</th></tr></thead><tbody>` +
       logs.map(l=>`<tr><td>v${l.qr_version}</td><td class="text-mute">${DCL.fmtDateTime(l.reissued_at)}</td><td>${esc(l.reason||"-")}</td></tr>`).join("") +
       '</tbody></table>';
   }
@@ -129,11 +129,11 @@ async function openReissue(id){
 async function confirmReissue(){
   const id = document.getElementById("reissuePartId").value;
   const reason = document.getElementById("reissueReason").value.trim();
-  if (!reason) { DCL.toast("재발행 사유를 입력하세요", "err"); return; }
+  if (!reason) { DCL.toast(DCL.t("page.qr.reasonRequired"), "err"); return; }
   const insp = DCL.getCurrentInspector();
   try{
     await DCL.rpc("fn_reissue_qr", { p_part_id:id, p_reason:reason, p_by: insp?.id||null });
-    DCL.toast("QR이 재발행되었습니다. 새 라벨을 인쇄해 교체하세요.");
+    DCL.toast(DCL.t("page.qr.reissuedToast"));
     DCL.closeModal("reissueModalOverlay");
     await loadAll();
     document.querySelector('.rowchk[data-id="'+id+'"]').checked = true;
