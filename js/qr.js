@@ -93,11 +93,16 @@ async function printSelected(){
       <div class="name">${esc(p.part_name)}</div>
     </div>`).join("");
 
+  if (typeof QRCode === "undefined") {
+    area.innerHTML = '<div class="empty-state no-print">QR 생성 라이브러리를 불러오지 못했습니다 (네트워크 확인 필요). 페이지를 새로고침해보세요.</div>';
+    return;
+  }
+
   for (const p of selected) {
     // 최초 발행 시각 기록 (이미 발행된 경우 서버측에서 무시됨)
     if (!p.qr_issued_at) { try{ await DCL.rpc("fn_issue_qr", { p_part_id: p.id }); }catch(e){} }
     const canvas = document.getElementById("qrc-"+p.id);
-    if (window.QRCode && canvas) {
+    if (canvas) {
       QRCode.toCanvas(canvas, qrPayloadFor(p.part_code), { width:150, margin:1, color:{dark:"#000000", light:"#ffffff"} });
     }
   }
