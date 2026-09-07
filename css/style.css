@@ -5,14 +5,16 @@
    ============================================================================ */
 
 :root{
-  /* ---- 폰트 크기 변수 (inline font-size 금지 대응) ---- */
-  --fs-xs: 11px;
-  --fs-sm: 12.5px;
-  --fs-base: 14px;
-  --fs-md: 15px;
-  --fs-lg: 18px;
-  --fs-xl: 22px;
-  --fs-xxl: 28px;
+  /* ---- 폰트 크기 변수 (inline font-size 금지 대응) ----
+     기준 대비 전체 30% 확대 + clamp()로 화면폭에 따라 유동적으로 커지고 작아지는 반응형 크기.
+     각 변수는 clamp(모바일 최소, 화면폭 비례 값, 데스크톱 최대) 형태. */
+  --fs-xs: clamp(12px, 0.71rem + 0.19vw, 14px);
+  --fs-sm: clamp(14px, 0.83rem + 0.19vw, 16px);
+  --fs-base: clamp(15px, 0.88rem + 0.28vw, 18px);
+  --fs-md: clamp(17px, 1rem + 0.28vw, 20px);
+  --fs-lg: clamp(20px, 1.19rem + 0.28vw, 23px);
+  --fs-xl: clamp(25px, 1.48rem + 0.37vw, 29px);
+  --fs-xxl: clamp(31px, 1.83rem + 0.46vw, 36px);
 
   /* ---- 라이트 테마 팔레트 (파스텔톤) ---- */
   --bg: #F7F9FC;
@@ -257,7 +259,7 @@ tbody tr:hover{ background:var(--bg-soft); }
 .fs-xxl{ font-size:var(--fs-xxl); }
 .fw-700{ font-weight:700; }
 .fw-800{ font-weight:800; }
-.icon-lg{ font-size:40px; }
+.icon-lg{ font-size:clamp(40px, 2.5rem + 0.5vw, 52px); }
 
 /* ---------------- 유틸 ---------------- */
 .text-mute{ color:var(--text-mute); }
