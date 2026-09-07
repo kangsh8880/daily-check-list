@@ -77,6 +77,11 @@ create table if not exists parts (
   purchase_date date,
   qr_version    integer not null default 1,  -- QR 재발행시 +1
   qr_issued_at  timestamptz,
+  cycle_type    text not null default 'DAILY'
+                check (cycle_type in ('DAILY','WEEKLY','MONTHLY')), -- 점검주기
+  cycle_weekdays integer[],                  -- WEEKLY용: 0=일,1=월,...,6=토
+  cycle_day_of_month smallint
+                check (cycle_day_of_month is null or cycle_day_of_month between 1 and 31), -- MONTHLY용: 1~31일
   is_deleted    boolean not null default false,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
@@ -191,7 +196,10 @@ create or replace function fn_create_part(
   p_spec        text,
   p_location    text,
   p_department  text,
-  p_purchase_date date
+  p_purchase_date date,
+  p_cycle_type  text default 'DAILY',
+  p_cycle_weekdays integer[] default null,
+  p_cycle_day_of_month smallint default null
 ) returns table(id uuid, part_code text) language plpgsql security definer as $$
 declare
   v_prefix text;
@@ -211,8 +219,10 @@ begin
 
   v_code := v_prefix || '-' || lpad(v_seq::text, 4, '0');
 
-  insert into parts(part_code, part_name, part_type_id, spec, location, department, purchase_date)
-    values (v_code, p_part_name, p_part_type_id, p_spec, p_location, p_department, p_purchase_date)
+  insert into parts(part_code, part_name, part_type_id, spec, location, department, purchase_date,
+                     cycle_type, cycle_weekdays, cycle_day_of_month)
+    values (v_code, p_part_name, p_part_type_id, p_spec, p_location, p_department, p_purchase_date,
+            coalesce(p_cycle_type,'DAILY'), p_cycle_weekdays, p_cycle_day_of_month)
     returning parts.id into v_id;
 
   insert into part_checklist_items(part_id, item_order, item_name, judge_type, unit, lower_limit, upper_limit, select_options, photo_required)
@@ -228,7 +238,8 @@ $$;
 -- 8.2 부품 수정
 create or replace function fn_update_part(
   p_id uuid, p_part_name text, p_spec text, p_location text,
-  p_department text, p_status text, p_purchase_date date
+  p_department text, p_status text, p_purchase_date date,
+  p_cycle_type text default 'DAILY', p_cycle_weekdays integer[] default null, p_cycle_day_of_month smallint default null
 ) returns void language plpgsql security definer as $$
 begin
   update parts set
@@ -238,6 +249,9 @@ begin
     department = p_department,
     status = coalesce(p_status, status),
     purchase_date = p_purchase_date,
+    cycle_type = coalesce(p_cycle_type, 'DAILY'),
+    cycle_weekdays = p_cycle_weekdays,
+    cycle_day_of_month = p_cycle_day_of_month,
     updated_at = now()
   where id = p_id;
 end;
@@ -472,25 +486,29 @@ insert into part_types (type_name, code_prefix, description) values
   ('배관/밸브', 'VLV', '배관 및 밸브류')
 on conflict (type_name) do nothing;
 
+-- 시드 재실행시 중복 방지용 유니크 제약 (유형+항목명 기준)
+alter table checklist_templates drop constraint if exists uq_checklist_templates_type_item;
+alter table checklist_templates add constraint uq_checklist_templates_type_item unique (part_type_id, item_name);
+
 insert into checklist_templates (part_type_id, item_order, item_name, judge_type, unit, lower_limit, upper_limit, photo_required)
-select id, 1, '외관 손상/오염 여부', 'OX', null, null, null, false from part_types where code_prefix='MTR'
+select id, 1, '외관 손상/오염 여부', 'OX', null::text, null::numeric, null::numeric, false from part_types where code_prefix='MTR'
 union all
-select id, 2, '이상소음/진동', 'OX', null, null, null, false from part_types where code_prefix='MTR'
+select id, 2, '이상소음/진동', 'OX', null::text, null::numeric, null::numeric, false from part_types where code_prefix='MTR'
 union all
 select id, 3, '작동온도', 'NUMERIC', '℃', 0, 80, false from part_types where code_prefix='MTR'
-on conflict do nothing;
+on conflict (part_type_id, item_name) do nothing;
 
 insert into checklist_templates (part_type_id, item_order, item_name, judge_type, unit, lower_limit, upper_limit, photo_required)
-select id, 1, '센서 오염/이물질', 'OX', null, null, null, true from part_types where code_prefix='SNR'
+select id, 1, '센서 오염/이물질', 'OX', null::text, null::numeric, null::numeric, true from part_types where code_prefix='SNR'
 union all
-select id, 2, '측정값 정상범위', 'OX', null, null, null, false from part_types where code_prefix='SNR'
-on conflict do nothing;
+select id, 2, '측정값 정상범위', 'OX', null::text, null::numeric, null::numeric, false from part_types where code_prefix='SNR'
+on conflict (part_type_id, item_name) do nothing;
 
 insert into checklist_templates (part_type_id, item_order, item_name, judge_type, unit, lower_limit, upper_limit, photo_required)
-select id, 1, '누유/누수 여부', 'OX', null, null, null, true from part_types where code_prefix='VLV'
+select id, 1, '누유/누수 여부', 'OX', null::text, null::numeric, null::numeric, true from part_types where code_prefix='VLV'
 union all
-select id, 2, '개폐 작동상태', 'SELECT', null, null, null, false from part_types where code_prefix='VLV'
-on conflict do nothing;
+select id, 2, '개폐 작동상태', 'SELECT', null::text, null::numeric, null::numeric, false from part_types where code_prefix='VLV'
+on conflict (part_type_id, item_name) do nothing;
 
 update checklist_templates set select_options = '정상,뻑뻑함,작동불가' where item_name = '개폐 작동상태';
 
