@@ -36,10 +36,13 @@ create table if not exists part_types (
   updated_at    timestamptz not null default now()
 );
 
--- 유형별 코드 채번 시퀀스 (동시입력 경합 방지)
+-- 유형+구매일자별 코드 채번 시퀀스 (동시입력 경합 방지)
+-- 부품코드 = 유형-YYMMDD(구매일자)-시리얼4자리, 시리얼은 (유형+구매일자) 조합별로 0001부터 리셋
 create table if not exists part_type_counters (
-  part_type_id  uuid primary key references part_types(id) on delete cascade,
-  last_seq      integer not null default 0
+  part_type_id  uuid not null references part_types(id) on delete cascade,
+  seq_date      date not null,
+  last_seq      integer not null default 0,
+  primary key (part_type_id, seq_date)
 );
 
 -- ============================================================================
@@ -207,17 +210,21 @@ declare
   v_code   text;
   v_id     uuid;
 begin
+  if p_purchase_date is null then
+    raise exception '구매일자는 필수입니다 (부품코드 채번에 사용됩니다)';
+  end if;
+
   select code_prefix into v_prefix from part_types where part_types.id = p_part_type_id;
   if v_prefix is null then
     raise exception '유효하지 않은 부품유형입니다';
   end if;
 
-  insert into part_type_counters(part_type_id, last_seq)
-    values (p_part_type_id, 1)
-    on conflict (part_type_id) do update set last_seq = part_type_counters.last_seq + 1
+  insert into part_type_counters(part_type_id, seq_date, last_seq)
+    values (p_part_type_id, p_purchase_date, 1)
+    on conflict (part_type_id, seq_date) do update set last_seq = part_type_counters.last_seq + 1
     returning last_seq into v_seq;
 
-  v_code := v_prefix || '-' || lpad(v_seq::text, 4, '0');
+  v_code := v_prefix || '-' || to_char(p_purchase_date, 'YYMMDD') || '-' || lpad(v_seq::text, 4, '0');
 
   insert into parts(part_code, part_name, part_type_id, spec, location, department, purchase_date,
                      cycle_type, cycle_weekdays, cycle_day_of_month)
