@@ -36,23 +36,24 @@ async function loadAll(){
   ]);
 }
 
+// 점검율 "대상(분모)"은 담당자 배정 여부와 무관하게 사용중(IN_USE) 부품 전체로 판정.
+// (담당자 배정은 "누가 점검할지"를 정하는 운영정보일 뿐, 점검율 집계 대상 여부와는 별개 개념)
 function targetPartIds(){
-  return Array.from(new Set(ALL_ASSIGNMENTS.map(a=>a.part_id)));
+  return ALL_PARTS.filter(p => p.status === "IN_USE").map(p=>p.id);
 }
 
-// 점검율 KPI에 왜 안 잡혔는지 근본원인 분류: 담당자 미배정 / 오늘이 점검주기 대상일이 아님
+// 점검율 KPI에 왜 안 잡혔는지 근본원인 분류: 오늘이 점검주기 대상일이 아님 / 사용중 상태가 아님(보관중·폐기)
 function classifyExcludedTodayInspections(todayInspections){
   const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
-  const assignedSet = new Set(targetPartIds());
   const dueSet = new Set(duePartIdsOn(DCL.today()));
-  let unassignedCnt = 0, notDueCnt = 0;
-  const unassignedParts = [];
+  let notDueCnt = 0, notInUseCnt = 0;
   todayInspections.forEach(i=>{
     if (dueSet.has(i.part_id)) return; // 정상 대상 -> 제외 아님
-    if (!assignedSet.has(i.part_id)) { unassignedCnt++; unassignedParts.push(partMap[i.part_id]?.part_code || i.part_id); }
+    const p = partMap[i.part_id];
+    if (p && p.status !== "IN_USE") notInUseCnt++;
     else notDueCnt++;
   });
-  return { unassignedCnt, notDueCnt, unassignedParts };
+  return { notDueCnt, notInUseCnt };
 }
 
 // 배정된 부품 중 해당 날짜(dateStr)에 점검주기상 점검 대상인 부품만 필터링
@@ -71,20 +72,19 @@ function renderTodayKpis(){
   const doneCnt = targetIds.filter(id=>doneIdsToday.has(id)).length;
   const targetCnt = targetIds.length;
   const rate = targetCnt ? (doneCnt/targetCnt*100) : 0;
-  // 점검율(대상/완료)과 별개로, 배정(담당자) 여부와 무관한 "실제 점검 시행 건수"를 항상 노출.
-  // 담당자 미배정 부품을 점검한 경우 점검율 대상에서는 빠지므로, 이 수치로 실제 활동을 확인 가능.
+  // 점검율(대상/완료)과 별개로 "실제 점검 시행 건수"를 항상 함께 노출 (진행 현황 즉시 확인용)
   const rawTodayCount = todayInspections.length;
 
   document.getElementById("kpiRate").textContent = DCL.fmtPercent(rate);
   document.getElementById("kpiRateSub").textContent = `대상 ${DCL.fmtCount(targetCnt)}건 중 ${DCL.fmtCount(doneCnt)}건 완료 · 금일 점검 시행 ${DCL.fmtCount(rawTodayCount)}건`;
 
-  // 점검율 대상에서 빠진 점검 건이 있으면 근본원인을 배너로 안내 (담당자 미배정 / 오늘 점검주기 대상 아님)
+  // 점검율 대상에서 빠진 점검 건이 있으면 근본원인을 배너로 안내 (오늘 점검주기 대상 아님 / 사용중 상태 아님)
   const excl = classifyExcludedTodayInspections(todayInspections);
   const warnEl = document.getElementById("assignWarnBanner");
   if (warnEl){
     const msgs = [];
-    if (excl.unassignedCnt > 0) msgs.push(`담당자 미배정 부품 점검 ${excl.unassignedCnt}건 (${excl.unassignedParts.slice(0,5).join(", ")}${excl.unassignedParts.length>5?" 외":""}) → 부품관리에서 담당자를 배정하세요`);
     if (excl.notDueCnt > 0) msgs.push(`오늘이 점검주기 대상일이 아닌 부품 점검 ${excl.notDueCnt}건 → 점검주기 설정을 확인하세요`);
+    if (excl.notInUseCnt > 0) msgs.push(`사용중 상태가 아닌(보관중·폐기) 부품 점검 ${excl.notInUseCnt}건 → 부품 상태를 확인하세요`);
     if (msgs.length){
       warnEl.style.display = "";
       warnEl.innerHTML = `⚠️ 금일 점검율에 반영되지 않은 점검이 있습니다: ${msgs.join(" · ")}`;

@@ -53,6 +53,12 @@ function renderTable(){
 
   const statusBadge = { IN_USE:'<span class="badge badge-blue">사용중</span>', STORAGE:'<span class="badge badge-gray">보관중</span>', DISPOSED:'<span class="badge badge-red">폐기</span>' };
 
+  // 담당자 미배정 경고: 점검율 집계 대상인 "사용중" 부품 중 배정된 담당자가 없는 건수 (전체 기준, 필터와 무관)
+  const unassignedInUseCnt = ALL_PARTS.filter(p => p.status === "IN_USE" && !(assignByPart[p.id]||[]).length).length;
+  const hintEl = document.getElementById("unassignedHint");
+  if (hintEl) hintEl.innerHTML = unassignedInUseCnt > 0
+    ? `<span class="text-red fw-700">⚠ 사용중 부품 중 담당자 미배정 ${unassignedInUseCnt}건</span>` : "";
+
   const body = document.getElementById("partsBody");
   if (!list.length) { body.innerHTML = '<tr><td colspan="10" class="empty-state">등록된 부품이 없습니다. + 부품 등록으로 추가하세요.</td></tr>'; return; }
 
@@ -60,6 +66,9 @@ function renderTable(){
     const t = typeMap[p.part_type_id];
     const names = (assignByPart[p.id]||[]).map(id => inspMap[id]?.name).filter(Boolean);
     const qrBadge = p.qr_issued_at ? `<span class="badge badge-green">v${p.qr_version}</span>` : '<span class="badge badge-yellow">미발행</span>';
+    // 사용중인데 담당자가 없으면 점검율 미이행 위험 -> 빨간 경고 배지. 보관중/폐기는 배정이 필요없으므로 회색 유지.
+    const assignCell = names.length ? esc(names.join(", "))
+      : (p.status === "IN_USE" ? '<span class="badge badge-red">⚠ 미배정</span>' : '<span class="badge badge-gray">미배정</span>');
     return `<tr>
       <td class="mono"><b>${esc(p.part_code)}</b></td>
       <td>${esc(p.part_name)}</td>
@@ -68,7 +77,7 @@ function renderTable(){
       <td class="text-mute">${esc(p.department||"-")}</td>
       <td><span class="badge badge-blue">${esc(DCL.cycleLabel(p))}</span></td>
       <td>${statusBadge[p.status]||p.status}</td>
-      <td class="text-mute" style="max-width:140px;">${names.length? esc(names.join(", ")) : '<span class="badge badge-gray">미배정</span>'}</td>
+      <td class="text-mute" style="max-width:140px;">${assignCell}</td>
       <td>${qrBadge}</td>
       <td class="row-actions">
         <button class="btn btn-sm" onclick="openPartModalById('${p.id}')">수정</button>
@@ -151,6 +160,7 @@ async function addAssignment(){
     CURRENT_PART_ASSIGNS.push(inspectorId);
     renderAssignedChips(partId);
     ALL_ASSIGNMENTS.push({part_id:partId, inspector_id:inspectorId, is_active:true});
+    renderTable();
     DCL.toast("담당자가 배정되었습니다");
   }catch(e){}
 }
@@ -160,6 +170,7 @@ async function removeAssignment(partId, inspectorId){
     CURRENT_PART_ASSIGNS = CURRENT_PART_ASSIGNS.filter(id=>id!==inspectorId);
     renderAssignedChips(partId);
     ALL_ASSIGNMENTS = ALL_ASSIGNMENTS.filter(a=>!(a.part_id===partId && a.inspector_id===inspectorId));
+    renderTable();
     DCL.toast("배정이 해제되었습니다");
   }catch(e){}
 }
