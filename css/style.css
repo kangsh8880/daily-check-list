@@ -166,6 +166,8 @@ a:hover{ text-decoration:underline; }
   font-size:var(--fs-sm); color:var(--accent-blue); cursor:pointer; font-weight:700;
 }
 .kpi-tile .ai-chip:hover{ border-color:var(--border-strong); }
+.kpi-tile.clickable{ cursor:pointer; transition:border-color .15s, box-shadow .15s; }
+.kpi-tile.clickable:hover{ border-color:var(--border-strong); box-shadow:0 2px 10px rgba(0,0,0,0.08); }
 
 /* ---------------- 버튼 ---------------- */
 .btn{
@@ -318,6 +320,16 @@ tbody tr:hover{ background:var(--bg-soft); }
 .lang-switch{
   width:auto; height:36px; padding:0 10px; border-radius:var(--radius-sm); border:1px solid var(--border);
   background:var(--bg-elevated); color:var(--text); font-size:var(--fs-xs); cursor:pointer;
+}
+.user-manual-btn{
+  height:36px; padding:0 12px; border-radius:var(--radius-sm); border:1px solid var(--border);
+  background:var(--pastel-blue); color:var(--accent-blue); font-size:var(--fs-xs); font-weight:700;
+  display:flex; align-items:center; gap:6px; cursor:pointer; text-decoration:none; white-space:nowrap;
+}
+.user-manual-btn:hover{ filter:brightness(0.97); }
+@media (max-width:640px){
+  .user-manual-btn-label{ display:none; }
+  .user-manual-btn{ padding:0 9px; }
 }
 
 /* ---------------- 로그인 화면 ---------------- */

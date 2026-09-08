@@ -23,13 +23,14 @@ async function load(){
 
   const roleLabel = { admin:`<span class="badge badge-blue">${DCL.t("role.admin")}</span>`, action_owner:`<span class="badge badge-yellow">${DCL.t("role.action_owner")}</span>`, inspector:`<span class="badge badge-gray">${DCL.t("role.inspector")}</span>` };
   const body = document.getElementById("inspBody");
-  if (!ALL_INSPECTORS.length) { body.innerHTML = `<tr><td colspan="7" class="empty-state">${DCL.t("page.inspectors.emptyList")}</td></tr>`; return; }
+  if (!ALL_INSPECTORS.length) { body.innerHTML = `<tr><td colspan="8" class="empty-state">${DCL.t("page.inspectors.emptyList")}</td></tr>`; return; }
   body.innerHTML = ALL_INSPECTORS.map(i => `
     <tr>
       <td><b>${esc(i.name)}</b></td>
       <td class="mono text-mute">${esc(i.emp_no||"-")}</td>
       <td class="text-mute">${esc(i.department||"-")}</td>
       <td>${roleLabel[i.role]||i.role}</td>
+      <td class="text-mute">${esc(i.email||"-")}</td>
       <td>${i.pin ? `<span class="badge badge-gray">${DCL.t("page.inspectors.pinSet")}</span>` : '<span class="text-mute">-</span>'}</td>
       <td>${DCL.fmtCount(cntByInsp[i.id]||0)}</td>
       <td class="row-actions">
@@ -46,6 +47,7 @@ function openModal(i){
   document.getElementById("inspName").value = i ? i.name : "";
   document.getElementById("inspEmpNo").value = i ? (i.emp_no||"") : "";
   document.getElementById("inspDept").value = i ? (i.department||"") : "";
+  document.getElementById("inspEmail").value = i ? (i.email||"") : "";
   document.getElementById("inspRole").value = i ? i.role : "inspector";
   document.getElementById("inspPin").value = "";
   document.getElementById("inspPin").placeholder = i && i.pin ? DCL.t("page.inspectors.pinPlaceholderChange") : DCL.t("page.inspectors.pinPlaceholderNoSet");
@@ -55,13 +57,16 @@ function openModal(i){
 async function save(){
   const name = document.getElementById("inspName").value.trim();
   if (!name) { DCL.toast(DCL.t("page.inspectors.nameRequired"), "err"); return; }
+  const email = document.getElementById("inspEmail").value.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { DCL.toast(DCL.t("page.inspectors.emailInvalid"), "err"); return; }
   const id = document.getElementById("inspId").value || null;
   try{
     await DCL.rpc("fn_upsert_inspector", {
       p_id:id, p_emp_no: document.getElementById("inspEmpNo").value.trim() || null,
       p_name:name, p_department: document.getElementById("inspDept").value.trim() || null,
       p_role: document.getElementById("inspRole").value,
-      p_pin: document.getElementById("inspPin").value.trim() || null
+      p_pin: document.getElementById("inspPin").value.trim() || null,
+      p_email: email || null
     });
     DCL.toast(DCL.t("common.toast.saved"));
     DCL.closeModal("inspModalOverlay");

@@ -23,8 +23,10 @@ document.addEventListener("DOMContentLoaded", async function(){
 
   await loadAll();
   renderTodayKpis();
+  renderMyTodayList();
   renderTrends();
   wireAiChips();
+  wireKpiTileClicks();
   DCL.AI.mountWidget(buildAiContext);
 });
 
@@ -142,6 +144,40 @@ function renderTodayKpis(){
 }
 function buildAiContext(){ return LAST_CTX; }
 
+// ---- 개인별 오늘 점검목록 (로그인한 점검자 본인 배정 부품만, 필터 미적용) -------------
+function renderMyTodayList(){
+  const mount = document.getElementById("myTodayList");
+  if (!mount) return;
+  const insp = DCL.getCurrentInspector();
+  const titleEl = document.getElementById("myTodayTitle");
+  if (titleEl) titleEl.textContent = DCL.t("page.dashboard.myListTitle", { name: insp.name });
+
+  const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
+  const today = DCL.today();
+  const myPartIds = ALL_ASSIGNMENTS.filter(a=>a.inspector_id===insp.id).map(a=>a.part_id);
+  const myDueIds = myPartIds.filter(id => partMap[id] && DCL.isDueOn(partMap[id], today));
+  const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
+
+  if (!myDueIds.length) {
+    mount.innerHTML = `<div class="empty-state">${DCL.t("page.dashboard.myListEmpty")}</div>`;
+    return;
+  }
+  mount.innerHTML = myDueIds.map(id=>{
+    const p = partMap[id];
+    const done = doneIdsToday.has(id);
+    return `<div class="flex-between" style="padding:9px 0; border-bottom:1px solid var(--border);">
+      <div>
+        <div style="font-weight:700;">${esc(p.part_name)}</div>
+        <div class="text-mute mono fs-xs">${esc(p.part_code)}</div>
+      </div>
+      <div style="text-align:right;">
+        ${done ? `<span class="badge badge-green">${DCL.t("page.inspect.doneComplete")}</span>` : `<span class="badge badge-yellow">${DCL.t("page.inspect.notDoneYet")}</span>`}
+        <a class="btn btn-sm" style="display:block; margin-top:6px; text-align:center;" href="inspect.html?code=${encodeURIComponent(p.part_code)}">${DCL.t("page.inspect.inspectBtn")}</a>
+      </div>
+    </div>`;
+  }).join("");
+}
+
 // ---- 추이 차트 (기간 필터 적용) ------------------------------------------------
 function renderTrends(){
   if (typeof Chart === "undefined") {
@@ -199,20 +235,90 @@ function renderTrends(){
   });
 }
 
-// ---- AI 진단 칩 ---------------------------------------------------------------
+// ---- AI 진단 칩 (✦ 아이콘 클릭 - 원인/영향/조치 분석 팝업) --------------------------
+// 칩 클릭은 KPI 타일 전체의 클릭(목록 팝업)과 별개 동작이므로 이벤트 버블링을 막는다.
 function wireAiChips(){
   document.getElementById("chipRate").addEventListener("click", function(e){
+    e.stopPropagation();
     DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.rate, input_value: Math.round(LAST_CTX.rate*10)/10, lower_limit:95, upper_limit:null, judge_type:"NUMERIC" }, e.currentTarget);
   });
   document.getElementById("chipMiss").addEventListener("click", function(e){
+    e.stopPropagation();
     DCL.AI.showDiagnosePopup({ item_name:DCL.t("page.dashboard.kpi.missLabel"), input_value: LAST_CTX.missCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
   });
   document.getElementById("chipAbn").addEventListener("click", function(e){
+    e.stopPropagation();
     DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.abnormal, input_value: LAST_CTX.abnormalCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
   });
   document.getElementById("chipAction").addEventListener("click", function(e){
+    e.stopPropagation();
     DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.action, input_value: Math.round(LAST_CTX.actionDoneRate*10)/10, lower_limit:90, upper_limit:null, judge_type:"NUMERIC" }, e.currentTarget);
   });
+}
+
+// ---- KPI 타일 클릭 → 해당 리스트 팝업 (대시보드 구축 원칙: 각 KPI는 클릭 가능해야 하며,
+// 클릭 시 해당되는 리스트가 팝업으로 표시되어야 함. ✦ AI진단 칩과는 별개 동작) --------------
+function wireKpiTileClicks(){
+  document.querySelectorAll(".kpi-tile[data-kpi]").forEach(function(tile){
+    tile.addEventListener("click", function(){ openKpiListModal(tile.dataset.kpi); });
+  });
+}
+
+function openKpiListModal(kind){
+  const today = DCL.today();
+  const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
+  const inspMap = Object.fromEntries(ALL_INSPECTORS.map(i=>[i.id,i]));
+  let title = "", head = "", rows = "", emptyKey = "";
+
+  if (kind === "rate") {
+    title = DCL.t("page.dashboard.kpiModal.rateTitle");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.col.status")}</th></tr>`;
+    const dueIds = duePartIdsOn(today);
+    const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
+    rows = dueIds.map(id=>{
+      const p = partMap[id]; if (!p) return "";
+      const done = doneIdsToday.has(id);
+      return `<tr><td class="mono"><b>${esc(p.part_code)}</b></td><td>${esc(p.part_name)}</td><td>${done ? `<span class="badge badge-green">${DCL.t("page.inspect.doneComplete")}</span>` : `<span class="badge badge-yellow">${DCL.t("page.inspect.notDoneYet")}</span>`}</td></tr>`;
+    }).join("");
+    emptyKey = "page.dashboard.kpiModal.rateEmpty";
+  } else if (kind === "miss") {
+    title = DCL.t("page.dashboard.missTableTitle");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.col.assignee")}</th></tr>`;
+    const dueIds = duePartIdsOn(today);
+    const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
+    const assignByPart = {};
+    ALL_ASSIGNMENTS.forEach(a=>{ (assignByPart[a.part_id]=assignByPart[a.part_id]||[]).push(a.inspector_id); });
+    rows = dueIds.filter(id=>!doneIdsToday.has(id)).map(id=>{
+      const p = partMap[id]; if (!p) return "";
+      const names = (assignByPart[id]||[]).map(iid=>inspMap[iid]?.name).filter(Boolean).join(", ") || DCL.t("common.unassigned");
+      return `<tr><td class="mono"><b>${esc(p.part_code)}</b></td><td>${esc(p.part_name)}</td><td class="text-mute">${esc(names)}</td></tr>`;
+    }).join("");
+    emptyKey = "page.dashboard.missEmpty";
+  } else if (kind === "abn") {
+    title = DCL.t("page.dashboard.kpiModal.abnTitle");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.col.assignee")}</th><th>${DCL.t("common.col.note")}</th></tr>`;
+    rows = ALL_INSPECTIONS.filter(i=>i.inspect_date===today && i.overall_result==="ABNORMAL").map(i=>{
+      const p = partMap[i.part_id];
+      return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td class="text-mute">${esc(i.note||"-")}</td></tr>`;
+    }).join("");
+    emptyKey = "page.dashboard.kpiModal.abnEmpty";
+  } else if (kind === "action") {
+    title = DCL.t("page.dashboard.kpiModal.actionTitle");
+    head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.status")}</th><th>${DCL.t("common.col.dueDate")}</th></tr>`;
+    const d7 = new Date(); d7.setDate(d7.getDate()-7);
+    const d7Str = d7.toISOString().slice(0,10);
+    const statusBadge = { OPEN:"badge-red", IN_PROGRESS:"badge-yellow", DONE:"badge-blue", APPROVED:"badge-green", REJECTED:"badge-red" };
+    rows = ALL_ACTIONS.filter(a => a.created_at >= d7Str).map(a=>{
+      const p = partMap[a.part_id];
+      return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td><span class="badge ${statusBadge[a.status]||'badge-gray'}">${DCL.t("status."+a.status)}</span></td><td>${DCL.fmtDate(a.due_date)}</td></tr>`;
+    }).join("");
+    emptyKey = "page.dashboard.kpiModal.actionEmpty";
+  }
+
+  document.getElementById("kpiListModalTitle").textContent = title;
+  document.getElementById("kpiListModalHead").innerHTML = head;
+  document.getElementById("kpiListModalBody").innerHTML = rows || `<tr><td colspan="4" class="empty-state">${DCL.t(emptyKey)}</td></tr>`;
+  DCL.openModal("kpiListModalOverlay");
 }
 
 function esc(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }

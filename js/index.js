@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", async function(){
   DCL.registerSW();
   DCL.applyI18n();
   DCL.initLangSwitcher();
+  DCL.initUserManualButton();
   if (DCL.loadI18nOverrides) DCL.loadI18nOverrides();
 
   if (!DCL.isConfigured()) {

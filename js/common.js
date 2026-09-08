@@ -252,6 +252,34 @@
     sidebar.querySelectorAll(".nav-item").forEach(function(a){ a.addEventListener("click", closeNav); });
   };
 
+  // ---- 버전 표시 (좌측 사이드바 브랜드 영역, HTML 수정 불필요) --------------------
+  DCL.APP_VERSION = "v1.0";
+  DCL.initVersionBadge = function(){
+    const sub = document.querySelector(".sidebar .brand .subtitle");
+    if (!sub || sub.querySelector(".version-badge")) return;
+    const badge = document.createElement("span");
+    badge.className = "version-badge";
+    badge.textContent = " · " + DCL.APP_VERSION;
+    sub.appendChild(badge);
+  };
+
+  // ---- 사용자 설명서 버튼 (topbar-right 우측 상단, HTML 수정 불필요) -----------------
+  // v1.0: 로그인~로그아웃 전체 프로세스를 다루는 Word 사용자 활용 설명서를 새 탭에서 엽니다.
+  DCL.initUserManualButton = function(){
+    const mount = document.querySelector(".topbar-right");
+    if (!mount || document.getElementById("userManualBtn")) return;
+    const a = document.createElement("a");
+    a.id = "userManualBtn";
+    a.className = "user-manual-btn no-print";
+    a.href = "manual/user-manual-v1.0.docx";
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.title = DCL.t("common.userManual");
+    a.innerHTML = '<span aria-hidden="true">📘</span><span class="user-manual-btn-label">' + DCL.t("common.userManual") + '</span>';
+    const themeBtn = document.getElementById("themeToggle");
+    if (themeBtn) mount.insertBefore(a, themeBtn); else mount.appendChild(a);
+  };
+
   // ---- 서비스워커 등록 (오프라인 앱쉘 캐시) -------------------------------------
   DCL.registerSW = function(){
     if ("serviceWorker" in navigator) {
@@ -266,11 +294,13 @@
     DCL.registerSW();
     DCL.applyI18n();       // SEED 사전으로 즉시 번역 적용 (동기, 오프라인에서도 동작)
     DCL.initLangSwitcher();
+    DCL.initUserManualButton();
     if (DCL.loadI18nOverrides) DCL.loadI18nOverrides(); // 관리자가 수정한 번역을 백그라운드로 덮어씀
     if (opts.requireRoles !== false) {
       const insp = DCL.requireAuth(opts.roles);
       if (!insp) return null;
       DCL.renderSidebar(activeHref);
+      DCL.initVersionBadge();
       DCL.initMobileNav();
       const logoutBtn = document.getElementById("logoutBtn");
       if (logoutBtn) logoutBtn.addEventListener("click", DCL.logout);
