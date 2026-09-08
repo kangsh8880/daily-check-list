@@ -33,7 +33,7 @@
             <button class="btn btn-sm" id="range30Btn" data-i18n="page.history.last30Btn">최근 30일</button>
           </div>
         </div>
-        <div class="form-grid-5">
+        <div class="form-grid-6">
           <div class="form-row mb-0">
             <label data-i18n="common.startDateLabel">시작일</label>
             <input type="date" id="filterStartDate" />
@@ -43,8 +43,12 @@
             <input type="date" id="filterEndDate" />
           </div>
           <div class="form-row mb-0">
-            <label data-i18n="page.history.partSearchLabel">부품 (코드/이름)</label>
-            <input type="text" id="searchInput" placeholder="예: MTR-250907-0001" data-i18n-placeholder="page.history.partSearchPlaceholder" />
+            <label data-i18n="common.col.partCode">부품코드</label>
+            <select id="filterPartCode"><option value="" data-i18n="common.all">전체</option></select>
+          </div>
+          <div class="form-row mb-0">
+            <label data-i18n="common.col.partName">부품명</label>
+            <select id="filterPartName"><option value="" data-i18n="common.all">전체</option></select>
           </div>
           <div class="form-row mb-0">
             <label data-i18n="common.inspectorLabel">점검자</label>
