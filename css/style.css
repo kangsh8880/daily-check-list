@@ -151,9 +151,11 @@ a:hover{ text-decoration:underline; }
 @media (max-width:640px){ .grid-2,.grid-3,.grid-4{ grid-template-columns:1fr; } }
 
 /* ---------------- KPI 타일 ---------------- */
+/* 대시보드 구축 원칙: KPI box 내부 텍스트는 가운데 정렬, 일반 카드보다 한 단계
+   진한 그림자(--shadow-md)로 시각적으로 강조 (원색 사용 없이 그림자로만 강조) */
 .kpi-tile{
   background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
-  padding:16px 16px; box-shadow:var(--shadow); position:relative;
+  padding:16px 16px; box-shadow:var(--shadow-md); position:relative; text-align:center;
 }
 .kpi-tile .kpi-label{ font-size:var(--fs-sm); color:var(--text-mute); font-weight:600; }
 .kpi-tile .kpi-value{ font-size:var(--fs-xxl); font-weight:800; margin-top:6px; }
@@ -167,7 +169,7 @@ a:hover{ text-decoration:underline; }
 }
 .kpi-tile .ai-chip:hover{ border-color:var(--border-strong); }
 .kpi-tile.clickable{ cursor:pointer; transition:border-color .15s, box-shadow .15s; }
-.kpi-tile.clickable:hover{ border-color:var(--border-strong); box-shadow:0 2px 10px rgba(0,0,0,0.08); }
+.kpi-tile.clickable:hover{ border-color:var(--border-strong); box-shadow:var(--shadow-md); }
 
 /* ---------------- 버튼 ---------------- */
 .btn{
