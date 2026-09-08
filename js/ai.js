@@ -260,19 +260,40 @@
   };
 
   // ---- 위젯 마운트 (FAB + 패널) -----------------------------------------------
+  // FAB은 탑바 우측(topbar-right)에 배치해 "AI 기능이 탑재되어 있다"는 것이 한눈에 보이도록 하고,
+  // 은은한 펄스(heartbeat) 애니메이션 + 이상/지연 건수 배지로 눈에 띄게 한다.
   AI.mountWidget = function(getContext){
     if (document.getElementById("aiFab")) return;
     const fab = document.createElement("div");
-    fab.id = "aiFab"; fab.className = "ai-fab no-print"; fab.title = DCL.t("ai.title"); fab.textContent = "✦";
+    fab.id = "aiFab"; fab.className = "ai-fab no-print"; fab.title = DCL.t("ai.title");
+    fab.innerHTML =
+      '<span class="ai-fab-ring"></span>' +
+      '<span class="ai-fab-ico">✦</span>' +
+      '<span class="ai-fab-label">'+escapeHtml(DCL.t("ai.fabLabel"))+'</span>' +
+      '<span class="ai-fab-badge" id="aiFabBadge" hidden>0</span>';
     const panel = document.createElement("div");
     panel.id = "aiPanel"; panel.className = "ai-panel no-print";
     panel.innerHTML =
       '<div class="ai-panel-head"><span>✦ '+escapeHtml(DCL.t("ai.title"))+'</span><span style="cursor:pointer;" id="aiPanelClose">✕</span></div>' +
       '<div class="ai-panel-body" id="aiPanelBody"><div class="ai-msg">'+escapeHtml(DCL.t("ai.greeting"))+'</div></div>' +
       '<div class="ai-panel-input"><input type="text" id="aiPanelInput" placeholder="'+escapeHtml(DCL.t("ai.inputPlaceholder"))+'"/><button class="btn btn-primary btn-sm" id="aiPanelSend">'+escapeHtml(DCL.t("ai.sendBtn"))+'</button></div>';
-    document.body.appendChild(fab); document.body.appendChild(panel);
 
-    fab.addEventListener("click", ()=> panel.classList.toggle("open"));
+    const topbarRight = document.querySelector(".topbar-right");
+    if (topbarRight) topbarRight.insertBefore(fab, topbarRight.firstChild);
+    else document.body.appendChild(fab);
+    document.body.appendChild(panel);
+
+    function refreshBadge(){
+      const badge = document.getElementById("aiFabBadge");
+      if (!badge) return;
+      const ctx = getContext ? (getContext() || {}) : {};
+      const n = (ctx.abnormalCnt||0) + (ctx.overdueCnt||0);
+      if (n > 0) { badge.textContent = n > 99 ? "99+" : String(n); badge.hidden = false; }
+      else { badge.hidden = true; }
+    }
+    refreshBadge();
+
+    fab.addEventListener("click", ()=>{ refreshBadge(); panel.classList.toggle("open"); });
     document.getElementById("aiPanelClose").addEventListener("click", ()=> panel.classList.remove("open"));
 
     async function send(){
