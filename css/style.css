@@ -447,6 +447,13 @@ tbody tr.row-focus-highlight{ background:var(--pastel-yellow); transition:backgr
 .ai-msg{ margin-bottom:10px; padding:8px 10px; border-radius:10px; background:var(--bg-soft); }
 .ai-msg.user{ background:var(--pastel-blue-soft); text-align:right; }
 .ai-msg-wait{ color:var(--text-mute); font-style:italic; }
+/* 심층 분석(리치) 답변용 경량 마크다운 스타일 — 원색 없이 기존 강조색(파랑)만 사용 */
+.ai-msg-rich{ line-height:1.6; }
+.ai-msg-rich > div{ margin-top:6px; }
+.ai-msg-rich > div:first-child{ margin-top:0; }
+.ai-md-h{ font-weight:700; color:var(--accent-blue); margin-top:12px !important; }
+.ai-md-ul, .ai-md-ol{ margin:4px 0 4px 18px; padding:0; }
+.ai-md-ul li, .ai-md-ol li{ margin-bottom:4px; }
 .ai-panel-input{ display:flex; gap:6px; padding:10px 12px; border-top:1px solid var(--border); }
 .ai-panel-input input{ flex:1; }
 @media (max-width:640px){
