@@ -16,7 +16,8 @@ document.addEventListener("DOMContentLoaded", async function(){
   document.getElementById("range30Btn").addEventListener("click", function(){ setRange(shiftDate(today,-29), today); });
   document.getElementById("filterStartDate").addEventListener("change", loadRange);
   document.getElementById("filterEndDate").addEventListener("change", loadRange);
-  document.getElementById("searchInput").addEventListener("input", renderTable);
+  document.getElementById("filterPartCode").addEventListener("change", function(){ syncPartSelect("filterPartCode", "filterPartName"); });
+  document.getElementById("filterPartName").addEventListener("change", function(){ syncPartSelect("filterPartName", "filterPartCode"); });
   document.getElementById("filterInspector").addEventListener("change", renderTable);
   document.getElementById("filterResult").addEventListener("change", renderTable);
 
@@ -45,6 +46,19 @@ async function loadMasters(){
   ]);
   const sel = document.getElementById("filterInspector");
   sel.innerHTML = `<option value="">${DCL.t("common.all")}</option>` + ALL_INSPECTORS.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join("");
+
+  const byCode = ALL_PARTS.slice().sort((a,b)=>String(a.part_code||"").localeCompare(String(b.part_code||"")));
+  const byName = ALL_PARTS.slice().sort((a,b)=>String(a.part_name||"").localeCompare(String(b.part_name||"")));
+  const codeSel = document.getElementById("filterPartCode");
+  const nameSel = document.getElementById("filterPartName");
+  codeSel.innerHTML = `<option value="">${DCL.t("common.all")}</option>` + byCode.map(p=>`<option value="${p.id}">${esc(p.part_code||"-")}</option>`).join("");
+  nameSel.innerHTML = `<option value="">${DCL.t("common.all")}</option>` + byName.map(p=>`<option value="${p.id}">${esc(p.part_name||"-")}</option>`).join("");
+}
+
+// 부품코드/부품명 select는 1개 부품을 가리키는 짝(id 동일)이므로, 한쪽을 고르면 다른 쪽도 같은 부품으로 맞춘다.
+function syncPartSelect(sourceId, targetId){
+  document.getElementById(targetId).value = document.getElementById(sourceId).value;
+  renderTable();
 }
 
 // 날짜 범위는 서버(Supabase) 조회 시점에 필터링 (데이터량 방어) - 부품/점검자/결과는 클라이언트에서 필터링
@@ -59,7 +73,7 @@ async function loadRange(){
 }
 
 function renderTable(){
-  const kw = document.getElementById("searchInput").value.trim().toLowerCase();
+  const partId = document.getElementById("filterPartCode").value || document.getElementById("filterPartName").value;
   const inspectorId = document.getElementById("filterInspector").value;
   const result = document.getElementById("filterResult").value;
   const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
@@ -69,10 +83,7 @@ function renderTable(){
   let list = RANGE_INSPECTIONS.slice();
   if (inspectorId) list = list.filter(i=>i.inspector_id===inspectorId);
   if (result) list = list.filter(i=>i.overall_result===result);
-  if (kw) list = list.filter(i=>{
-    const p = partMap[i.part_id];
-    return p && (String(p.part_code||"").toLowerCase().includes(kw) || String(p.part_name||"").toLowerCase().includes(kw));
-  });
+  if (partId) list = list.filter(i=>i.part_id===partId);
 
   const abnCnt = list.filter(i=>i.overall_result==="ABNORMAL").length;
   document.getElementById("resultSummary").textContent = DCL.t("page.history.summary", {total: DCL.fmtCount(list.length), abn: DCL.fmtCount(abnCnt)});
