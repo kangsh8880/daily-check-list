@@ -235,6 +235,10 @@ input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--acce
 .form-grid-5{ display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:12px; }
 @media (max-width:900px){ .form-grid-5{ grid-template-columns:repeat(2,1fr); } }
 @media (max-width:480px){ .form-grid-5{ grid-template-columns:1fr; } }
+.form-grid-6{ display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:12px; }
+@media (max-width:1100px){ .form-grid-6{ grid-template-columns:repeat(3,1fr); } }
+@media (max-width:640px){ .form-grid-6{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:420px){ .form-grid-6{ grid-template-columns:1fr; } }
 .form-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:14px; }
 
 /* ---------------- 테이블 ---------------- */
