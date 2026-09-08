@@ -150,6 +150,13 @@ a:hover{ text-decoration:underline; }
 }
 .my-task-section:first-child .my-task-section-head{ padding-top:0; border-top:none; }
 
+/* 문의사항 상세 - 답변 목록 */
+.inquiry-reply{
+  border:1px solid var(--border); border-radius:8px;
+  padding:8px 10px; margin-top:8px; background:var(--bg-soft);
+}
+.inquiry-reply:first-child{ margin-top:0; }
+
 /* 차트 컨테이너: Chart.js(responsive+maintainAspectRatio:false)는 부모에 명시적 높이가 없으면
    리사이즈 옵저버가 무한히 늘어나는 버그가 생기므로, 반드시 고정 높이 wrapper 안에 canvas를 둔다 */
 .chart-box{ position:relative; width:100%; height:280px; }
