@@ -10,16 +10,23 @@
   const cfg = window.AI_CONFIG || { provider:"none" };
 
   // ---- 외부 LLM 호출 (설정된 경우만) -----------------------------------------
+  // gemini-flash-latest: 특정 버전을 하드코딩하지 않고 Google이 관리하는 "최신 Flash 모델" 별칭을 사용.
+  // 모델이 세대교체되어도(2.x → 3.x 등) 코드를 매번 수정할 필요 없이 자동으로 최신 무료 모델을 탄다.
   async function callLLM(prompt){
     try{
       if (cfg.provider === "gemini" && cfg.geminiApiKey) {
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + cfg.geminiApiKey;
+        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + cfg.geminiApiKey;
         const res = await fetch(url, {
           method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ contents:[{ parts:[{ text: prompt }] }] })
+          body: JSON.stringify({
+            contents:[{ parts:[{ text: prompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
+          })
         });
         const data = await res.json();
-        return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) { console.warn("[DCL.AI] Gemini 응답에 결과가 없습니다. 규칙기반으로 대체합니다.", data?.error || data); return null; }
+        return text;
       }
       if (cfg.provider === "groq" && cfg.groqApiKey) {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -27,50 +34,191 @@
           headers:{"Content-Type":"application/json", "Authorization":"Bearer " + cfg.groqApiKey},
           body: JSON.stringify({
             model:"llama-3.1-8b-instant",
-            messages:[{role:"user", content: prompt}]
+            messages:[{role:"user", content: prompt}],
+            temperature: 0.3, max_tokens: 500
           })
         });
         const data = await res.json();
-        return data?.choices?.[0]?.message?.content || null;
+        const text = data?.choices?.[0]?.message?.content;
+        if (!text) { console.warn("[DCL.AI] Groq 응답에 결과가 없습니다. 규칙기반으로 대체합니다.", data?.error || data); return null; }
+        return text;
       }
     }catch(e){ console.warn("[DCL.AI] LLM 호출 실패, 규칙기반으로 대체합니다", e); }
     return null;
   }
 
   // ---- 규칙기반 Q&A (대시보드 KPI 컨텍스트 기반) -------------------------------
-  // ctx 예: { rate, targetCnt, doneCnt, missCnt, missList:[{part_name,part_code}],
-  //           abnormalCnt, actionOpenCnt, actionDoneRate, overdueCnt, overdueList:[...] }
+  // ctx 예: { rate, targetCnt, doneCnt, rawTodayCount, missCnt, missList:[{part_name,part_code,assignees}],
+  //           abnormalCnt, abnormalList:[{part_name,part_code,note}],
+  //           actionOpenCnt, actionSeverityCnt:{CRITICAL,MAJOR,MINOR}, actionDoneRate, actionApprovedCnt, actionTotalCnt,
+  //           overdueCnt, overdueList:[{part_name,part_code,issue_desc,severity,due_date,assignee}],
+  //           perInspectorToday:[{name,assignedCnt,doneCnt,rate}], partsInUseCnt, inspectorsActiveCnt,
+  //           inquiriesTotal, inquiriesOpen, inquiriesAnswered,
+  //           allPartNames:[{name,code}], allInspectorNames:[name,...] }
+  // 오프라인/무료로 동작하는 규칙기반 엔진이므로 LLM만큼의 자유도는 없지만, 아래 원칙으로 정확도를 최대화한다:
+  //  1) 특정 부품/담당자 이름이 문장에 포함되면 그 개체에 대한 답을 최우선으로 준다 (엔티티 인식)
+  //  2) 각 의도(intent)마다 동의어를 여러 개 등록해 표현 변화에 강하게 대응한다
+  //  3) 의도끼리 키워드가 겹칠 때는(예: "점검자" 안에 "점검"이 포함) 더 구체적인 의도를 먼저 검사한다
+  //  4) 아무 의도에도 안 걸리면 "이해 못함" 한 줄로 끝내지 않고, 오늘 현황 요약 + 질문 예시를 함께 준다
   function ruleBasedAnswer(q, ctx){
     ctx = ctx || {};
-    const has = (kw)=> q.includes(kw);
+    // 띄어쓰기/문장부호 변형에 강하도록 정규화 후 포함여부로 판정 (완전한 형태소분석은 아니지만 실용적으로 충분)
+    const norm = (s)=> String(s||"").toLowerCase().replace(/[\s?!.,~^*·"'()]/g, "");
+    const nq = norm(q);
+    const has = (kw)=> nq.includes(norm(kw));
+    const hasAny = (...kws)=> kws.some(has);
+    const pct = (n)=> (n===undefined || n===null || Number.isNaN(n)) ? "정보 없음" : DCL.fmtPercent(n);
+    const cnt = (n)=> (n===undefined || n===null || Number.isNaN(n)) ? "정보 없음" : DCL.fmtCount(n);
 
-    if (has("점검율") || has("점검률") || (has("점검") && has("몇") )) {
-      return `오늘 점검율은 ${DCL.fmtPercent(ctx.rate)} 입니다. (대상 ${DCL.fmtCount(ctx.targetCnt)}건 중 ${DCL.fmtCount(ctx.doneCnt)}건 완료)`;
+    // ---- 0) 엔티티 인식: 질문 속에 특정 부품명/코드, 특정 담당자명이 있으면 최우선으로 그 항목을 답한다 ----
+    // 부품명은 보통 "온도센서 #1"처럼 일련번호가 붙는데, 사용자는 흔히 "온도센서"처럼 번호를 빼고 묻는다.
+    // 그래서 정확히 일치하는 이름/코드가 없으면 번호를 뗀 "줄기(stem)" 기준으로도 한 번 더 찾는다.
+    const stem = (s)=> String(s||"").replace(/\s*#\d+\s*$/,"").trim();
+    const allParts = ctx.allPartNames || [];
+    let matchedParts = allParts.filter(p => (p.name && p.name.length>=2 && has(p.name)) || (p.code && p.code.length>=2 && has(p.code)));
+    if (!matchedParts.length) {
+      const q2 = allParts.find(p => stem(p.name).length>=2 && has(stem(p.name)));
+      if (q2) matchedParts = allParts.filter(p => stem(p.name) === stem(q2.name));
     }
-    if (has("누락") || has("미점검")) {
+    if (matchedParts.length) {
+      const describeOne = (part)=>{
+        const miss = (ctx.missList||[]).find(m=>m.part_name===part.name);
+        const abn = (ctx.abnormalList||[]).find(a=>a.part_name===part.name);
+        const overdueHere = (ctx.overdueList||[]).filter(a=>a.part_name===part.name);
+        const bits = [miss ? "미점검" : "점검완료"];
+        if (abn) bits.push("이상발견");
+        if (overdueHere.length) bits.push(`기한초과조치 ${cnt(overdueHere.length)}건`);
+        return `${part.name}(${part.code}): ${bits.join(", ")}`;
+      };
+      if (matchedParts.length === 1) {
+        const part = matchedParts[0];
+        const miss = (ctx.missList||[]).find(m=>m.part_name===part.name);
+        const abn = (ctx.abnormalList||[]).find(a=>a.part_name===part.name);
+        const overdueHere = (ctx.overdueList||[]).filter(a=>a.part_name===part.name);
+        const lines = [`[${part.name}(${part.code})] 관련 현황입니다.`];
+        lines.push(miss ? `오늘 아직 점검하지 않았습니다.${(miss.assignees&&miss.assignees.length)?` (담당자: ${miss.assignees.join(", ")})`:""}` : "오늘 점검은 완료된 것으로 확인됩니다.");
+        if (abn) lines.push(`금일 이상 발견 기록이 있습니다.${abn.note?` (비고: ${abn.note})`:""}`);
+        if (overdueHere.length) lines.push(`기한초과 조치 ${cnt(overdueHere.length)}건: ` + overdueHere.map(a=>`${a.issue_desc}(담당 ${a.assignee}, 기한 ${a.due_date})`).join(" / "));
+        return lines.join(" ");
+      }
+      // 같은 이름 줄기를 가진 부품이 여러 대인 경우 (예: 온도센서 #1, #2) 각각 요약해서 함께 제시
+      return `"${stem(matchedParts[0].name)}"에 해당하는 부품이 ${cnt(matchedParts.length)}대 있습니다: ` + matchedParts.slice(0,6).map(describeOne).join(" / ");
+    }
+    const matchedInspector = (ctx.allInspectorNames||[]).find(name => name && name.length>=2 && has(name));
+    if (matchedInspector) {
+      const me = (ctx.perInspectorToday||[]).find(x=>x.name===matchedInspector);
+      if (!me) return `${matchedInspector}님에게 오늘 배정된 점검 대상이 없습니다.`;
+      return `${matchedInspector}님은 오늘 배정 ${cnt(me.assignedCnt)}건 중 ${cnt(me.doneCnt)}건 점검을 완료했습니다 (완료율 ${pct(me.rate)}).`;
+    }
+
+    // ---- 1) 인사 / 도움말 ----
+    if (hasAny("안녕","hello","hi","반가","시작")) {
+      return "안녕하세요! 오늘 점검율, 미점검 부품, 이상 발견 현황, 조치 이행율, 지연 조치, 특정 부품/담당자 현황 등을 자유롭게 물어보세요.";
+    }
+    if (hasAny("도움말","사용법","뭘물어","뭐물어","어떻게물어","예시")) {
+      return `이렇게 물어보실 수 있어요: "오늘 점검율은?", "미점검 부품 알려줘", "이상 발견된 거 있어?", "조치 이행율은?", "지연된 조치 있어?", "지금 뭐부터 해야해?", "긴급 조치 몇건이야?", "OOO님 실적 어때?", "온도센서 상태 어때?"`;
+    }
+
+    // ---- 2) 종합 브리핑/요약 ----
+    if (hasAny("브리핑","요약","전체현황","전체상황","서머리","오늘현황","한눈에","종합")) {
+      let ans = `[오늘 종합 현황] 점검율 ${pct(ctx.rate)}(${cnt(ctx.doneCnt)}/${cnt(ctx.targetCnt)}건), 미점검 ${cnt(ctx.missCnt)}건, 이상발견 ${cnt(ctx.abnormalCnt)}건, 조치 이행율(최근7일) ${pct(ctx.actionDoneRate)}, 기한초과 조치 ${cnt(ctx.overdueCnt)}건입니다.`;
+      if (ctx.overdueCnt) ans += " 기한초과 건부터 우선 확인해 주세요.";
+      return ans;
+    }
+
+    // ---- 3) 우선순위 / 지금 뭐 해야 하는지 ----
+    if (hasAny("지금뭐","당장","우선순위","뭐부터","뭐해야","할일","해야할","먼저해야","급한거","급한일")) {
+      const parts = [];
+      if (ctx.overdueCnt) parts.push(`기한초과 조치 ${cnt(ctx.overdueCnt)}건 (최우선)`);
+      if (ctx.actionSeverityCnt && ctx.actionSeverityCnt.CRITICAL) parts.push(`긴급 등급 미조치 ${cnt(ctx.actionSeverityCnt.CRITICAL)}건`);
+      if (ctx.missCnt) parts.push(`미점검 부품 ${cnt(ctx.missCnt)}건`);
+      if (!parts.length) return "현재 긴급하게 처리할 항목이 없습니다. 좋은 상태입니다.";
+      return "우선순위대로 안내드립니다: " + parts.join(" → ");
+    }
+
+    // ---- 4) 문의사항 ----
+    if (hasAny("문의","건의사항","질문게시판")) {
+      return `등록된 문의사항은 총 ${cnt(ctx.inquiriesTotal||0)}건이며, 답변대기 ${cnt(ctx.inquiriesOpen||0)}건, 답변완료 ${cnt(ctx.inquiriesAnswered||0)}건입니다.`;
+    }
+
+    // ---- 5) 마스터 통계 (부품수/점검자수) - "점검" substring 충돌 방지를 위해 구체적 조합만 인정 ----
+    if (hasAny("부품수","부품몇","부품이몇","등록된부품","전체부품","부품목록몇","점검자수","점검자몇","점검자가몇","활동인원","전체인원","점검자인원")) {
+      return `현재 사용중 부품은 ${cnt(ctx.partsInUseCnt)}개, 활동중인 점검자는 ${cnt(ctx.inspectorsActiveCnt)}명입니다.`;
+    }
+
+    // ---- 6) 심각도별 조치 ----
+    if (hasAny("긴급","중대","경미") && hasAny("조치","건","몇","현황")) {
+      const sevKey = has("긴급") ? "CRITICAL" : has("중대") ? "MAJOR" : "MINOR";
+      const sevLabel = has("긴급") ? "긴급" : has("중대") ? "중대" : "경미";
+      const n = ctx.actionSeverityCnt ? ctx.actionSeverityCnt[sevKey] : undefined;
+      return `현재 진행중(미완료)인 ${sevLabel} 등급 조치는 ${cnt(n)}건입니다.`;
+    }
+
+    // ---- 7) 담당자별 실적/랭킹 ----
+    if (hasAny("실적","랭킹","순위","누가제일","누가가장","누가잘")) {
+      const list = (ctx.perInspectorToday||[]).slice().sort((a,b)=>(b.rate??-1)-(a.rate??-1));
+      if (!list.length) return "오늘 배정된 담당자별 점검 실적 데이터가 없습니다.";
+      const top = list.slice(0,5).map(x=>`${x.name} ${cnt(x.doneCnt)}/${cnt(x.assignedCnt)}(${pct(x.rate)})`).join(", ");
+      return `담당자별 오늘 점검 실적: ${top}`;
+    }
+
+    // ---- 8) 미점검 (점검율보다 먼저 검사: "미점검" 안에 "점검"이 포함되어 있어 순서가 중요) ----
+    if (hasAny("누락","미점검","안한","안했","아직안","안했음")) {
       if (!ctx.missList || ctx.missList.length === 0) return "현재 미점검 부품은 없습니다. 오늘 점검 대상이 모두 처리되었습니다.";
-      const names = ctx.missList.slice(0,5).map(p=>p.part_name+"("+p.part_code+")").join(", ");
-      return `미점검 부품이 ${DCL.fmtCount(ctx.missList.length)}건 있습니다: ${names}${ctx.missList.length>5?" 외":""}`;
+      const names = ctx.missList.slice(0,5).map(p=>`${p.part_name}(${p.part_code})`+((p.assignees&&p.assignees.length)?` - ${p.assignees.join(",")}`:"")).join(", ");
+      return `미점검 부품이 ${cnt(ctx.missList.length)}건 있습니다: ${names}${ctx.missList.length>5?" 외":""}`;
     }
-    if (has("이상") && (has("건") || has("몇") || has("현황"))) {
-      return `금일 이상 발견 건수는 ${DCL.fmtCount(ctx.abnormalCnt)}건 입니다. 진행중인 조치는 ${DCL.fmtCount(ctx.actionOpenCnt)}건 입니다.`;
+
+    // ---- 9) 점검율/점검현황 ----
+    if (hasAny("점검율","점검률") || (has("점검") && hasAny("몇건했","몇건했어","얼마나","진행률","진척"))) {
+      return `오늘 점검율은 ${pct(ctx.rate)}입니다. (대상 ${cnt(ctx.targetCnt)}건 중 ${cnt(ctx.doneCnt)}건 완료, 실제 점검 시행 ${cnt(ctx.rawTodayCount)}건)`;
     }
-    if (has("조치") && (has("이행") || has("완료") || has("현황") || has("율") || has("률"))) {
-      return `조치 이행율은 ${DCL.fmtPercent(ctx.actionDoneRate)} 입니다.` + (ctx.overdueCnt ? ` 기한 초과된 조치가 ${DCL.fmtCount(ctx.overdueCnt)}건 있으니 확인이 필요합니다.` : " 기한 초과 조치는 없습니다.");
+
+    // ---- 10) 이상발견 ----
+    if (has("이상") && hasAny("건","몇","현황","발견","있어","있나")) {
+      let ans = `금일 이상 발견 건수는 ${cnt(ctx.abnormalCnt)}건입니다. 진행중인 조치는 ${cnt(ctx.actionOpenCnt)}건입니다.`;
+      if (ctx.abnormalList && ctx.abnormalList.length) ans += " (" + ctx.abnormalList.slice(0,3).map(a=>a.part_name).join(", ") + (ctx.abnormalList.length>3?" 외":"") + ")";
+      return ans;
     }
-    if (has("지연") || has("기한")) {
+
+    // ---- 11) 조치 이행율/현황 ----
+    if (has("조치") && hasAny("이행","완료","현황","율","률")) {
+      return `조치 이행율(최근7일)은 ${pct(ctx.actionDoneRate)}입니다 (승인완료 ${cnt(ctx.actionApprovedCnt)}/${cnt(ctx.actionTotalCnt)}건).` + (ctx.overdueCnt ? ` 기한 초과된 조치가 ${cnt(ctx.overdueCnt)}건 있으니 확인이 필요합니다.` : " 기한 초과 조치는 없습니다.");
+    }
+
+    // ---- 12) 지연/기한초과 ----
+    if (hasAny("지연","기한초과","늦은","기한임박","기한지난")) {
       if (!ctx.overdueList || ctx.overdueList.length===0) return "기한이 지난 미완료 조치는 없습니다.";
-      const names = ctx.overdueList.slice(0,5).map(a=>a.part_name+" - "+a.issue_desc).join(" / ");
-      return `기한 초과 조치 ${DCL.fmtCount(ctx.overdueList.length)}건: ${names}`;
+      const names = ctx.overdueList.slice(0,5).map(a=>`${a.part_name} - ${a.issue_desc}(담당:${a.assignee}, 기한:${a.due_date})`).join(" / ");
+      return `기한 초과 조치 ${cnt(ctx.overdueList.length)}건: ${names}`;
     }
-    if (has("안녕") || has("hello")) return "안녕하세요! 오늘 점검율, 미점검 부품, 이상 발견 현황, 조치 이행율 등을 물어보세요.";
+
+    // ---- fallback: "이해하지 못했습니다" 한 줄로 끝내지 않고, 알고 있는 정보 요약 + 질문 예시를 함께 제공 ----
+    if (ctx.rate !== undefined) {
+      return `질문을 정확히 이해하지 못했습니다. 참고로 오늘 현황은 점검율 ${pct(ctx.rate)}, 미점검 ${cnt(ctx.missCnt)}건, 이상발견 ${cnt(ctx.abnormalCnt)}건, 조치 이행율 ${pct(ctx.actionDoneRate)}입니다. 이렇게도 물어보세요: "지연된 조치 있어?", "지금 뭐부터 해야해?", "OOO님 실적 어때?", "온도센서 상태 어때?"`;
+    }
+    if (ctx.item_name) {
+      return `"${ctx.item_name}" 항목에 대해 더 궁금하신 점을 구체적으로 적어주시면 답변드리겠습니다. (예: "원인이 뭐야?", "재발 방지책은?")`;
+    }
     return "이해하지 못했습니다. 예) '오늘 점검율은?', '미점검 부품 알려줘', '조치 이행율은?', '지연된 조치 있어?' 와 같이 질문해 보세요.";
   }
 
   AI.ask = async function(question, ctx){
-    const prompt = `당신은 제조현장 부품 일상점검 시스템의 데이터 어시스턴트입니다. 아래 KPI 데이터를 참고하여 한국어로 간결하게 답하세요.\n데이터: ${JSON.stringify(ctx)}\n질문: ${question}`;
+    const prompt = [
+      "당신은 제조현장 '부품 일상점검 시스템'의 데이터 어시스턴트입니다. 아래 JSON 데이터만 근거로 질문에 답하세요.",
+      "규칙:",
+      "1) 반드시 한국어 존댓말(합쇼체)로, 2~3문장 이내로 간결하게 답한다.",
+      "2) 마크다운(별표, 헤더, 코드블록 등)이나 글머리 기호를 쓰지 않고 평문으로만 답한다.",
+      "3) 숫자 표기: 인원(명) 단위는 정수로, 비율(%) 단위는 소수점 첫째자리까지 표기한다.",
+      "4) 데이터에 없는 내용은 추측하지 말고 '해당 정보는 확인되지 않습니다'라고 답한다.",
+      "5) missList/overdueList 등 목록 데이터를 인용할 때는 부품명과 담당자명을 함께 언급해 실무적으로 답한다.",
+      "",
+      "데이터(JSON): " + JSON.stringify(ctx),
+      "",
+      "질문: " + question
+    ].join("\n");
     const llmAns = await callLLM(prompt);
-    return llmAns || ruleBasedAnswer(question, ctx);
+    return llmAns ? llmAns.trim() : ruleBasedAnswer(question, ctx);
   };
 
   // ---- AI 자동진단 (이상 항목 클릭 시 원인/영향/조치가이드) ---------------------
@@ -92,13 +240,21 @@
     };
   }
   AI.diagnose = async function(anomaly){
-    const prompt = `제조설비 부품 점검 중 이상이 발견되었습니다. 아래 정보를 바탕으로 원인/영향/즉시조치/단기조치/재발방지 5가지를 한국어로 각 1문장씩 간결히 제시하세요. JSON으로만 답하세요: {"cause":"","impact":"","immediate":"","shortterm":"","prevention":""}\n정보: ${JSON.stringify(anomaly)}`;
+    const prompt = [
+      "제조설비 부품 일상점검 중 이상이 발견되었습니다. 아래 항목 정보를 근거로 원인/영향/즉시조치/단기조치/재발방지 5가지를 각 1문장씩, 한국어 존댓말(합쇼체)로 간결히 제시하세요.",
+      "실무 현장 담당자가 바로 읽고 행동할 수 있는 구체적인 문장으로 작성하고, 마크다운 없이 순수 JSON 하나만 출력하세요(설명 문구를 앞뒤에 붙이지 마세요).",
+      'JSON 형식: {"cause":"","impact":"","immediate":"","shortterm":"","prevention":""}',
+      "항목 정보(JSON): " + JSON.stringify(anomaly)
+    ].join("\n");
     const llmAns = await callLLM(prompt);
     if (llmAns) {
       try {
         const m = llmAns.match(/\{[\s\S]*\}/);
-        if (m) return JSON.parse(m[0]);
-      } catch(e){ /* fallthrough */ }
+        if (m) {
+          const parsed = JSON.parse(m[0]);
+          if (parsed && parsed.cause && parsed.impact && parsed.immediate && parsed.shortterm && parsed.prevention) return parsed;
+        }
+      } catch(e){ console.warn("[DCL.AI] 진단 응답 파싱 실패, 규칙기반으로 대체합니다", e); }
     }
     return ruleBasedDiagnose(anomaly);
   };

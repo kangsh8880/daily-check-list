@@ -5,7 +5,7 @@
 // 지원: Gemini(google) / Groq / 없음(rule-based)
 // ============================================================================
 window.AI_CONFIG = {
-  provider: "none",        // "gemini" | "groq" | "none"
-  geminiApiKey: "",        // https://aistudio.google.com/apikey 에서 무료 발급
+  provider: "gemini",      // "gemini" | "groq" | "none"
+  geminiApiKey: "AQ.Ab8RN6LJciFNBALqHRIRrMT2NqS5wU_hfrGHSVw1VjhD6oFzhg",   // https://aistudio.google.com/apikey 에서 무료 발급
   groqApiKey: ""           // https://console.groq.com/keys 에서 무료 발급
 };
