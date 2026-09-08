@@ -67,7 +67,7 @@ function renderTable(){
     else if (a.status === "REJECTED") actionsHtml = `<button class="btn btn-sm" onclick="openAssign('${a.id}')">${DCL.t("page.actions.btnReassignAfterReject")}</button>`;
     else actionsHtml = `<span class="text-mute fs-xs">${DCL.t("page.actions.doneStatic")}</span>`;
 
-    return `<tr>
+    return `<tr id="actionRow-${a.id}">
       <td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td>
       <td style="max-width:220px;">${esc(a.issue_desc)}</td>
       <td>${sevBadge[a.severity]||a.severity}</td>
@@ -77,6 +77,20 @@ function renderTable(){
       <td class="row-actions">${actionsHtml}</td>
     </tr>`;
   }).join("");
+
+  focusRowFromUrl();
+}
+
+// 대시보드 "오늘 내 할 일"의 조치/승인 카드에서 넘어온 경우(actions.html?focus=<action_id>),
+// 해당 행으로 스크롤 + 하이라이트해 어떤 항목을 처리해야 하는지 바로 알 수 있게 한다.
+function focusRowFromUrl(){
+  const id = new URLSearchParams(location.search).get("focus");
+  if (!id) return;
+  const row = document.getElementById("actionRow-" + id);
+  if (!row) return;
+  row.scrollIntoView({ behavior:"smooth", block:"center" });
+  row.classList.add("row-focus-highlight");
+  setTimeout(() => row.classList.remove("row-focus-highlight"), 3000);
 }
 
 // ---- 담당자 지정 -------------------------------------------------------------

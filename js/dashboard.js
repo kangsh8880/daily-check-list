@@ -144,25 +144,28 @@ function renderTodayKpis(){
 }
 function buildAiContext(){ return LAST_CTX; }
 
-// ---- 개인별 오늘 점검목록 (로그인한 점검자 본인 배정 부품만, 필터 미적용) -------------
+// ---- 개인별 오늘 할 일 (로그인한 본인의 점검/조치/승인 대상을 모두 모아서 표시, 필터 미적용) ----
+// 대시보드 구축 원칙: 로그인한 인원이 오늘 처리해야 할 업무(점검/조치/승인)를 모두 한 곳에서
+// 확인할 수 있어야 한다. 승인 섹션은 관리자(admin) 역할에게만 노출한다 (조치 승인/반려는
+// 관리자 권한 전용 - 10장 점검자 관리 참고).
 function renderMyTodayList(){
   const mount = document.getElementById("myTodayList");
   if (!mount) return;
   const insp = DCL.getCurrentInspector();
   const titleEl = document.getElementById("myTodayTitle");
   if (titleEl) titleEl.textContent = DCL.t("page.dashboard.myListTitle", { name: insp.name });
+  const hintEl = document.querySelector('[data-i18n="page.dashboard.myListHint"]');
+  if (hintEl) hintEl.textContent = DCL.t("page.dashboard.myListHint");
 
   const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
   const today = DCL.today();
+
+  // 1) 점검할 대상 - 오늘 점검주기 대상으로 본인에게 배정된 부품
   const myPartIds = ALL_ASSIGNMENTS.filter(a=>a.inspector_id===insp.id).map(a=>a.part_id);
   const myDueIds = myPartIds.filter(id => partMap[id] && DCL.isDueOn(partMap[id], today));
   const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
 
-  if (!myDueIds.length) {
-    mount.innerHTML = `<div class="empty-state">${DCL.t("page.dashboard.myListEmpty")}</div>`;
-    return;
-  }
-  mount.innerHTML = myDueIds.map(id=>{
+  const inspectRows = myDueIds.map(id=>{
     const p = partMap[id];
     const done = doneIdsToday.has(id);
     return `<div class="flex-between" style="padding:9px 0; border-bottom:1px solid var(--border);">
@@ -176,6 +179,50 @@ function renderMyTodayList(){
       </div>
     </div>`;
   }).join("");
+
+  // 2) 조치해야 할 대상 - 본인이 담당자로 지정된 대기/조치중 상태 조치
+  const myOpenActions = ALL_ACTIONS.filter(a => a.assignee_id === insp.id && ["OPEN","IN_PROGRESS"].includes(a.status));
+  const actionRows = myOpenActions.map(a => actionTaskRowHtml(a, partMap, DCL.t("page.dashboard.myTasks.actionBtn"))).join("");
+
+  // 3) 승인해야 할 대상 - 완료등록(DONE) 후 승인 대기 중인 조치 (관리자만)
+  const isAdmin = insp.role === "admin";
+  const myApprovals = isAdmin ? ALL_ACTIONS.filter(a => a.status === "DONE") : [];
+  const approveRows = myApprovals.map(a => actionTaskRowHtml(a, partMap, DCL.t("page.dashboard.myTasks.approveBtn"))).join("");
+
+  if (!myDueIds.length && !myOpenActions.length && !myApprovals.length) {
+    mount.innerHTML = `<div class="empty-state">${DCL.t("page.dashboard.myListEmpty")}</div>`;
+    return;
+  }
+
+  const section = (headerKey, countN, rowsHtml, emptyKey) => `
+    <div class="my-task-section">
+      <div class="my-task-section-head">${DCL.t(headerKey)} <span class="badge badge-gray">${DCL.fmtCount(countN)}</span></div>
+      ${rowsHtml || `<div class="empty-state" style="padding:10px 0;">${DCL.t(emptyKey)}</div>`}
+    </div>`;
+
+  mount.innerHTML = [
+    section("page.dashboard.myTasks.inspectHeader", myDueIds.length, inspectRows, "page.dashboard.myListEmpty"),
+    section("page.dashboard.myTasks.actionHeader", myOpenActions.length, actionRows, "page.dashboard.myTasks.actionEmpty"),
+    isAdmin ? section("page.dashboard.myTasks.approveHeader", myApprovals.length, approveRows, "page.dashboard.myTasks.approveEmpty") : "",
+  ].join("");
+}
+
+// 조치/승인 항목 공용 행 렌더 - 부품명/코드, 이상내용, 상태 배지, 기한, 이동 버튼(actions.html?focus=<id>)
+function actionTaskRowHtml(a, partMap, btnLabel){
+  const p = partMap[a.part_id] || {};
+  const statusBadge = { OPEN:"badge-red", IN_PROGRESS:"badge-yellow", DONE:"badge-blue" }[a.status] || "badge-gray";
+  return `<div class="flex-between" style="padding:9px 0; border-bottom:1px solid var(--border);">
+    <div>
+      <div style="font-weight:700;">${esc(p.part_name||"-")}</div>
+      <div class="text-mute mono fs-xs">${esc(p.part_code||"-")}</div>
+      <div class="text-mute fs-xs" style="margin-top:2px; max-width:280px;">${esc(a.issue_desc||"-")}</div>
+    </div>
+    <div style="text-align:right;">
+      <span class="badge ${statusBadge}">${DCL.t("status."+a.status)}</span>
+      ${a.due_date ? `<div class="text-mute fs-xs" style="margin-top:4px;">${DCL.t("common.col.dueDate")}: ${DCL.fmtDate(a.due_date)}</div>` : ""}
+      <a class="btn btn-sm" style="display:block; margin-top:6px; text-align:center;" href="actions.html?focus=${encodeURIComponent(a.id)}">${btnLabel}</a>
+    </div>
+  </div>`;
 }
 
 // ---- 추이 차트 (기간 필터 적용) ------------------------------------------------
