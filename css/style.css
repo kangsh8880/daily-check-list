@@ -451,6 +451,9 @@ tbody tr.row-focus-highlight{ background:var(--pastel-yellow); transition:backgr
 .ai-msg{ margin-bottom:10px; padding:8px 10px; border-radius:10px; background:var(--bg-soft); }
 .ai-msg.user{ background:var(--pastel-blue-soft); text-align:right; }
 .ai-msg-wait{ color:var(--text-mute); font-style:italic; }
+/* AI 호출 실패(규칙기반 대체 없음) — 솔직하게 실패를 알리고 재시도를 유도. 배경은 파스텔 레드, 글자는 강조색(빨강)만 사용 */
+.ai-msg-error{ background:var(--pastel-red-soft); color:var(--accent-red); }
+.ai-retry-btn{ margin-left:6px; }
 /* 심층 분석(리치) 답변용 경량 마크다운 스타일 — 원색 없이 기존 강조색(파랑)만 사용 */
 .ai-msg-rich{ line-height:1.6; }
 .ai-msg-rich > div{ margin-top:6px; }
