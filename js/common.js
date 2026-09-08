@@ -253,7 +253,7 @@
   };
 
   // ---- 버전 표시 (좌측 사이드바 브랜드 영역, HTML 수정 불필요) --------------------
-  DCL.APP_VERSION = "v1.0";
+  DCL.APP_VERSION = "v1.1";
   DCL.initVersionBadge = function(){
     const sub = document.querySelector(".sidebar .brand .subtitle");
     if (!sub || sub.querySelector(".version-badge")) return;
@@ -264,14 +264,15 @@
   };
 
   // ---- 사용자 설명서 버튼 (topbar-right 우측 상단, HTML 수정 불필요) -----------------
-  // v1.0: 로그인~로그아웃 전체 프로세스를 다루는 Word 사용자 활용 설명서를 새 탭에서 엽니다.
+  // v1.1: 로그인~로그아웃 전체 프로세스 + 오늘 내 점검목록/KPI 클릭 팝업/KPI 디자인 개선/
+  // 점검자 이메일 항목을 반영한 Word 사용자 활용 설명서를 새 탭에서 엽니다.
   DCL.initUserManualButton = function(){
     const mount = document.querySelector(".topbar-right");
     if (!mount || document.getElementById("userManualBtn")) return;
     const a = document.createElement("a");
     a.id = "userManualBtn";
     a.className = "user-manual-btn no-print";
-    a.href = "manual/user-manual-v1.0.docx";
+    a.href = "manual/user-manual-v1.1.docx";
     a.target = "_blank";
     a.rel = "noopener";
     a.title = DCL.t("common.userManual");
