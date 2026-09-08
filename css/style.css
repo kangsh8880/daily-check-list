@@ -43,6 +43,7 @@
 
   --shadow: 0 2px 10px rgba(30,40,60,0.06);
   --shadow-md: 0 6px 24px rgba(30,40,60,0.10);
+  --shadow-lg: 0 14px 34px rgba(30,40,60,0.16);
   --radius: 12px;
   --radius-sm: 8px;
 }
@@ -65,6 +66,7 @@
     --pastel-purple:#2C2740; --pastel-gray:#262B33;
     --shadow: 0 2px 10px rgba(0,0,0,0.35);
     --shadow-md: 0 10px 30px rgba(0,0,0,0.45);
+    --shadow-lg: 0 18px 40px rgba(0,0,0,0.55);
   }
 }
 :root[data-theme="dark"]{
@@ -79,6 +81,7 @@
   --pastel-purple:#2C2740; --pastel-gray:#262B33;
   --shadow: 0 2px 10px rgba(0,0,0,0.35);
   --shadow-md: 0 10px 30px rgba(0,0,0,0.45);
+  --shadow-lg: 0 18px 40px rgba(0,0,0,0.55);
 }
 
 *{ box-sizing:border-box; }
@@ -168,8 +171,11 @@ a:hover{ text-decoration:underline; }
   font-size:var(--fs-sm); color:var(--accent-blue); cursor:pointer; font-weight:700;
 }
 .kpi-tile .ai-chip:hover{ border-color:var(--border-strong); }
-.kpi-tile.clickable{ cursor:pointer; transition:border-color .15s, box-shadow .15s; }
-.kpi-tile.clickable:hover{ border-color:var(--border-strong); box-shadow:var(--shadow-md); }
+/* 대시보드 구축 원칙: 클릭 가능한 KPI 카드는 호버 시 위로 살짝 떠오르는(lift)
+   인터랙션 + 한 단계 더 진한 그림자(--shadow-lg)로 강조한다 (원색 사용 없이
+   그림자/움직임으로만 강조; 색상 배경 변경 금지) */
+.kpi-tile.clickable{ cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .15s; }
+.kpi-tile.clickable:hover{ border-color:var(--border-strong); box-shadow:var(--shadow-lg); transform:translateY(-3px); }
 
 /* ---------------- 버튼 ---------------- */
 .btn{
