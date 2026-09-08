@@ -29,6 +29,8 @@
   --text-mute: #6B7480;
   --accent-red: #C94F4F;      /* 강조: 빨강 (경고/이상) */
   --accent-blue: #3E6FB0;     /* 강조: 파랑 (정보/링크) */
+  --accent-green: #2C7A47;    /* 배지 등에 쓰는 초록 (다크에서 반전) */
+  --accent-olive: #8A6D1E;    /* 배지 등에 쓰는 노랑/올리브 (다크에서 반전) */
 
   --pastel-blue: #D6E4F0;
   --pastel-blue-soft: #EAF4FB;
@@ -40,6 +42,11 @@
   --pastel-red-soft: #FBEEEE;
   --pastel-purple: #E6DFF3;
   --pastel-gray: #E9ECF1;
+
+  /* 버튼 글자색: 라이트에서는 진한 톤(파스텔 배경 위 대비), 다크에서는 흰색으로 반전 (아래 다크 블록 참조) */
+  --btn-primary-text: #173156;
+  --btn-success-text: #204A2E;
+  --btn-danger-text: #6E2323;
 
   --shadow: 0 2px 10px rgba(30,40,60,0.06);
   --shadow-md: 0 6px 24px rgba(30,40,60,0.10);
@@ -59,11 +66,14 @@
     --border:#333A45; --border-strong:#E7EAF0;
     --text:#E7EAF0; --text-mute:#9AA3B2;
     --accent-red:#E08585; --accent-blue:#7FAADC;
+    --accent-green:#7DDB9E; --accent-olive:#E0C468;
     --pastel-blue:#26364A; --pastel-blue-soft:#1F2C3D;
     --pastel-green:#213A2C; --pastel-green-soft:#1B2F24;
     --pastel-yellow:#3B3421; --pastel-yellow-soft:#2E2919;
     --pastel-red:#3B2626; --pastel-red-soft:#2E1E1E;
     --pastel-purple:#2C2740; --pastel-gray:#262B33;
+    /* 다크 모드에서는 파스텔 배경 자체가 어두워지므로, 버튼 글자는 흰색으로 반전해 시인성 확보 */
+    --btn-primary-text:#F2F5FA; --btn-success-text:#F2F5FA; --btn-danger-text:#F2F5FA;
     --shadow: 0 2px 10px rgba(0,0,0,0.35);
     --shadow-md: 0 10px 30px rgba(0,0,0,0.45);
     --shadow-lg: 0 18px 40px rgba(0,0,0,0.55);
@@ -74,11 +84,13 @@
   --border:#333A45; --border-strong:#E7EAF0;
   --text:#E7EAF0; --text-mute:#9AA3B2;
   --accent-red:#E08585; --accent-blue:#7FAADC;
+  --accent-green:#7DDB9E; --accent-olive:#E0C468;
   --pastel-blue:#26364A; --pastel-blue-soft:#1F2C3D;
   --pastel-green:#213A2C; --pastel-green-soft:#1B2F24;
   --pastel-yellow:#3B3421; --pastel-yellow-soft:#2E2919;
   --pastel-red:#3B2626; --pastel-red-soft:#2E1E1E;
   --pastel-purple:#2C2740; --pastel-gray:#262B33;
+  --btn-primary-text:#F2F5FA; --btn-success-text:#F2F5FA; --btn-danger-text:#F2F5FA;
   --shadow: 0 2px 10px rgba(0,0,0,0.35);
   --shadow-md: 0 10px 30px rgba(0,0,0,0.45);
   --shadow-lg: 0 18px 40px rgba(0,0,0,0.55);
@@ -202,10 +214,10 @@ a:hover{ text-decoration:underline; }
 }
 .btn:hover{ border-color:var(--border-strong); }
 .btn:disabled{ opacity:.45; cursor:not-allowed; }
-.btn-primary{ background:var(--pastel-blue); border-color:var(--border); color:#173156; }
+.btn-primary{ background:var(--pastel-blue); border-color:var(--border); color:var(--btn-primary-text); }
 .btn-primary:hover{ border-color:var(--border-strong); }
-.btn-danger{ background:var(--pastel-red); color:#6E2323; }
-.btn-success{ background:var(--pastel-green); color:#204A2E; }
+.btn-danger{ background:var(--pastel-red); color:var(--btn-danger-text); }
+.btn-success{ background:var(--pastel-green); color:var(--btn-success-text); }
 .btn-ghost{ background:transparent; border-color:transparent; }
 .btn-sm{ padding:6px 10px; font-size:var(--fs-xs); }
 .btn-icon{ width:34px; height:34px; padding:0; }
@@ -245,8 +257,8 @@ tbody tr.row-focus-highlight{ background:var(--pastel-yellow); transition:backgr
   font-size:var(--fs-xs); font-weight:700; border:1px solid var(--border);
 }
 .badge-blue{ background:var(--pastel-blue-soft); color:var(--accent-blue); }
-.badge-green{ background:var(--pastel-green-soft); color:#2C7A47; }
-.badge-yellow{ background:var(--pastel-yellow-soft); color:#8A6D1E; }
+.badge-green{ background:var(--pastel-green-soft); color:var(--accent-green); }
+.badge-yellow{ background:var(--pastel-yellow-soft); color:var(--accent-olive); }
 .badge-red{ background:var(--pastel-red-soft); color:var(--accent-red); }
 .badge-gray{ background:var(--pastel-gray); color:var(--text-mute); }
 
@@ -382,7 +394,7 @@ tbody tr.row-focus-highlight{ background:var(--pastel-yellow); transition:backgr
 .checklist-item.abnormal{ border-color:var(--accent-red); }
 .judge-btns{ display:flex; gap:8px; margin-top:8px; }
 .judge-btn{ flex:1; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg-elevated); font-weight:700; cursor:pointer; text-align:center; font-size:var(--fs-sm); }
-.judge-btn.sel-ok{ background:var(--pastel-green); border-color:var(--border-strong); color:#204A2E; }
+.judge-btn.sel-ok{ background:var(--pastel-green); border-color:var(--border-strong); color:var(--btn-success-text); }
 .judge-btn.sel-ng{ background:var(--pastel-red); border-color:var(--border-strong); color:var(--accent-red); }
 .offline-banner{ background:var(--pastel-yellow); border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:10px 12px; font-size:var(--fs-xs); margin-bottom:12px; }
 
