@@ -121,7 +121,11 @@ async function showDetail(id){
 
   const actionRows = actions.length ? actions.map(a=>{
     const statusLabel = {OPEN:DCL.t("status.OPEN"), IN_PROGRESS:DCL.t("status.IN_PROGRESS"), DONE:DCL.t("status.DONE"), APPROVED:DCL.t("status.APPROVED"), REJECTED:DCL.t("status.REJECTED")}[a.status] || a.status;
-    return `<div class="text-mute fs-xs" style="margin-top:4px;">└ ${esc(a.issue_desc)} → <b>${esc(statusLabel)}</b></div>`;
+    // 점검자와 조치 담당자는 다를 수 있으므로, 조치 상태 옆에 담당자 이름을 함께 표기한다.
+    // 조치 담당자가 아직 미배정인 경우, 담당자가 지정되기 전까지는 점검자를 그대로
+    // 조치자로 표기한다 (담당자가 지정되면 그 인원 이름으로 바뀐다).
+    const assigneeName = a.assignee_id ? esc(inspMap[a.assignee_id]?.name || "-") : esc(insp?.name || DCL.t("common.unassigned"));
+    return `<div class="text-mute fs-xs" style="margin-top:4px;">└ ${esc(a.issue_desc)} → <b>${esc(statusLabel)}</b> (${DCL.t("common.col.assignee")}: ${assigneeName})</div>`;
   }).join("") : "";
 
   body.innerHTML = `
