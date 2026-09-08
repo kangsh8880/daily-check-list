@@ -12,7 +12,12 @@
   // ---- 외부 LLM 호출 (설정된 경우만) -----------------------------------------
   // gemini-flash-latest: 특정 버전을 하드코딩하지 않고 Google이 관리하는 "최신 Flash 모델" 별칭을 사용.
   // 모델이 세대교체되어도(2.x → 3.x 등) 코드를 매번 수정할 필요 없이 자동으로 최신 무료 모델을 탄다.
-  async function callLLM(prompt){
+  // opts.maxOutputTokens / opts.thinkingLevel: 짧은 KPI 조회는 low+1024로 빠르게,
+  // "분석/진단/보고서" 같은 심층 질문은 medium+2048로 더 깊고 긴 답변을 받는다 (스마트 하이브리드).
+  async function callLLM(prompt, opts){
+    opts = opts || {};
+    const maxOutputTokens = opts.maxOutputTokens || 1024;
+    const thinkingLevel = opts.thinkingLevel || "low";
     try{
       if (cfg.provider === "gemini" && cfg.geminiApiKey) {
         const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + cfg.geminiApiKey;
@@ -21,14 +26,13 @@
           body: JSON.stringify({
             contents:[{ parts:[{ text: prompt }] }],
             // thinkingConfig: 최신 Flash 계열은 기본적으로 내부 추론(thinking)을 거치는데,
-            // 이 추론 시간이 응답 지연(느림)의 주 원인이고 모델/버전에 따라 추론 토큰이
-            // maxOutputTokens 예산을 함께 잠식해 답변이 중간에 끊기는 원인이 되기도 한다.
-            // 우리는 KPI 요약처럼 짧고 사실기반인 답변만 필요하므로 추론을 최소화(low)하고,
-            // maxOutputTokens도 넉넉히 잡아 절대 중간에 끊기지 않게 한다.
+            // 이 추론 시간이 응답 지연의 주 원인이고, 추론 토큰이 maxOutputTokens 예산을
+            // 함께 잠식해 답변이 중간에 끊기는 원인이 되기도 한다. 짧은 KPI 조회는 추론을
+            // 최소화(low)해 속도를 우선하고, 심층 분석 요청은 medium으로 올려 품질을 우선한다.
             generationConfig: {
               temperature: 0.3,
-              maxOutputTokens: 1024,
-              thinkingConfig: { thinkingLevel: "low" }
+              maxOutputTokens: maxOutputTokens,
+              thinkingConfig: { thinkingLevel: thinkingLevel }
             }
           })
         });
@@ -46,7 +50,7 @@
           body: JSON.stringify({
             model:"llama-3.1-8b-instant",
             messages:[{role:"user", content: prompt}],
-            temperature: 0.3, max_tokens: 500
+            temperature: 0.3, max_tokens: maxOutputTokens
           })
         });
         const data = await res.json();
@@ -214,8 +218,28 @@
     return "이해하지 못했습니다. 예) '오늘 점검율은?', '미점검 부품 알려줘', '조치 이행율은?', '지연된 조치 있어?' 와 같이 질문해 보세요.";
   }
 
+  // "분석해줘/진단해줘/보고서/상세히/원인/개선방안" 등 심층 분석을 요구하는 질문인지 판별.
+  // 단순 수치 조회("오늘 점검율은?")는 지금처럼 짧게, 분석형 질문은 구조화된 리포트로 답한다(스마트 하이브리드).
+  function isDeepQuestion(q){
+    return /분석|진단|보고서|리포트|상세히|자세히|개선\s*(방안|제언|점)|제안|원인|근본|리뷰|검토|평가/.test(String(q||""));
+  }
+
   AI.ask = async function(question, ctx){
-    const prompt = [
+    const rich = isDeepQuestion(question);
+    const prompt = rich ? [
+      "당신은 제조현장 '부품 일상점검 시스템'의 데이터 분석 어시스턴트입니다. 아래 JSON 데이터만 근거로 답변하세요.",
+      "규칙:",
+      "1) 한국어 존댓말(합쇼체)을 사용한다.",
+      "2) 마크다운으로 구조화된 보고서 형태로 답한다 — 소제목은 '## '로, 핵심 수치는 **굵게**로, 세부 항목은 '- ' 글머리 목록으로, 실행 제안은 '1. ' 번호 목록으로 작성한다.",
+      "3) 구성 순서: 한 줄 요약 → ## 주요 지표 현황 → ## 상세 내역(해당 시) → ## 개선 제언(구체적으로 실행 가능한 조치, 담당/기한이 있으면 함께 언급).",
+      "4) 숫자 표기: 인원(명)은 정수, 비율(%)은 소수점 첫째자리까지 표기한다.",
+      "5) 데이터에 없는 내용은 추측하지 말고 '확인되지 않음'이라고 명시한다.",
+      "6) 목록 항목을 인용할 때는 부품명·부품코드·담당자명·기한 등 실무 식별정보를 함께 표기한다.",
+      "",
+      "데이터(JSON): " + JSON.stringify(ctx),
+      "",
+      "질문: " + question
+    ].join("\n") : [
       "당신은 제조현장 '부품 일상점검 시스템'의 데이터 어시스턴트입니다. 아래 JSON 데이터만 근거로 질문에 답하세요.",
       "규칙:",
       "1) 반드시 한국어 존댓말(합쇼체)로, 2~3문장 이내로 간결하게 답한다.",
@@ -228,8 +252,10 @@
       "",
       "질문: " + question
     ].join("\n");
-    const llmAns = await callLLM(prompt);
-    return llmAns ? llmAns.trim() : ruleBasedAnswer(question, ctx);
+    const llmOpts = rich ? { maxOutputTokens: 2048, thinkingLevel: "medium" } : { maxOutputTokens: 1024, thinkingLevel: "low" };
+    const llmAns = await callLLM(prompt, llmOpts);
+    if (llmAns) return { text: llmAns.trim(), rich: rich };
+    return { text: ruleBasedAnswer(question, ctx), rich: false };
   };
 
   // ---- AI 자동진단 (이상 항목 클릭 시 원인/영향/조치가이드) ---------------------
@@ -329,7 +355,8 @@
         const ans = await AI.ask(q, ctx);
         const waitEl = document.getElementById(waitId);
         if (waitEl) waitEl.remove();
-        body.insertAdjacentHTML("beforeend", '<div class="ai-msg">'+escapeHtml(ans)+'</div>');
+        const bodyHtml = ans.rich ? renderMarkdownLite(ans.text) : escapeHtml(ans.text);
+        body.insertAdjacentHTML("beforeend", '<div class="ai-msg'+(ans.rich?' ai-msg-rich':'')+'">'+bodyHtml+'</div>');
       }catch(e){
         const waitEl = document.getElementById(waitId);
         if (waitEl) waitEl.remove();
@@ -347,6 +374,44 @@
 
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; });
+  }
+
+  // ---- 경량 마크다운 렌더러 (심층 분석 답변 전용) --------------------------------
+  // AI 응답이 ## 소제목 / **굵게** / - 목록 / 1. 번호목록 을 쓸 때만 사용한다.
+  // 먼저 escapeHtml로 전체를 이스케이프한 뒤 마크다운 기호만 안전하게 치환하므로
+  // 응답 텍스트에 <script> 등이 섞여도 그대로 문자로 표시될 뿐 실행되지 않는다.
+  function renderMarkdownLite(md){
+    const lines = escapeHtml(md).split(/\r?\n/);
+    let html = ""; let ulOpen = false; let olOpen = false;
+    function closeLists(){
+      if (ulOpen) { html += "</ul>"; ulOpen = false; }
+      if (olOpen) { html += "</ol>"; olOpen = false; }
+    }
+    function inline(t){
+      return t.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    }
+    lines.forEach(function(raw){
+      const line = raw.trim();
+      if (!line) { closeLists(); return; }
+      let m;
+      if ((m = line.match(/^#{2,3}\s+(.*)$/))) {
+        closeLists();
+        html += '<div class="ai-md-h">'+inline(m[1])+'</div>';
+      } else if ((m = line.match(/^[-*]\s+(.*)$/))) {
+        if (olOpen) { html += "</ol>"; olOpen = false; }
+        if (!ulOpen) { html += '<ul class="ai-md-ul">'; ulOpen = true; }
+        html += "<li>"+inline(m[1])+"</li>";
+      } else if ((m = line.match(/^\d+[.)]\s+(.*)$/))) {
+        if (ulOpen) { html += "</ul>"; ulOpen = false; }
+        if (!olOpen) { html += '<ol class="ai-md-ol">'; olOpen = true; }
+        html += "<li>"+inline(m[1])+"</li>";
+      } else {
+        closeLists();
+        html += "<div>"+inline(line)+"</div>";
+      }
+    });
+    closeLists();
+    return html;
   }
 
   // ---- AI 진단 팝업 (KPI 타일 ✦ 칩 클릭 시 사용) --------------------------------
@@ -391,7 +456,9 @@
       document.getElementById("aiDiagAns").textContent = DCL.t("ai.analyzing");
       try{
         const ans = await AI.ask(q, anomaly);
-        document.getElementById("aiDiagAns").textContent = ans;
+        const ansEl = document.getElementById("aiDiagAns");
+        if (ans.rich) { ansEl.innerHTML = renderMarkdownLite(ans.text); }
+        else { ansEl.textContent = ans.text; }
       }catch(e){
         document.getElementById("aiDiagAns").textContent = DCL.t("ai.errorFallback");
       }finally{
