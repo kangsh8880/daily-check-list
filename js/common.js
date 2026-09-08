@@ -192,6 +192,7 @@
     { href:"inspect.html",    ico:"📷", labelKey:"nav.inspect", roles:null },
     { href:"actions.html",    ico:"🛠️", labelKey:"nav.actions", roles:null },
     { href:"history.html",    ico:"📜", labelKey:"nav.history", roles:null },
+    { href:"inquiries.html",  ico:"💬", labelKey:"nav.inquiries", roles:null },
     { href:"parts.html",      ico:"📦", labelKey:"nav.parts", roles:["admin"] },
     { href:"qr.html",         ico:"🏷️", labelKey:"nav.qr", roles:["admin"] },
     { href:"types.html",      ico:"🧩", labelKey:"nav.types", roles:["admin"] },

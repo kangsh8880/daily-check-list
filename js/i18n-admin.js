@@ -14,6 +14,7 @@ const CATEGORY_LABEL_KEY = {
   types: "nav.types",
   inspectors: "nav.inspectors",
   history: "nav.history",
+  inquiries: "nav.inquiries",
   i18nAdmin: "nav.i18n",
   ai: "ai.title"
 };
