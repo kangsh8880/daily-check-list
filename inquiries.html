@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page.inquiries.pageTitle">문의사항 - K1 일상점검</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="assets/icon-192.png" />
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-badge">K1</div><div><div class="title" data-i18n="common.brandTitle">일상점검</div><div class="subtitle">Daily Check List</div></div></div>
+    <nav id="sidebarNav"></nav>
+    <div class="nav-section-label" data-i18n="common.accountLabel">계정</div>
+    <div id="sidebarWho" style="padding:0 8px 10px;"></div>
+    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span data-i18n="common.logout">로그아웃</span></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="page-title" data-i18n="page.inquiries.title">문의사항</div><div class="page-desc" data-i18n="page.inquiries.desc">시스템에 대한 기능요구사항·불편사항·기타 문의를 누구나 등록하고 답변할 수 있습니다</div></div>
+      <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
+    </div>
+
+    <div class="content">
+      <div class="card">
+        <div class="card-head">
+          <h3 data-i18n="page.inquiries.searchCondTitle">검색 조건</h3>
+          <button class="btn btn-primary btn-sm" id="newInquiryBtn" data-i18n="page.inquiries.newBtn">+ 새 문의 등록</button>
+        </div>
+        <div class="form-grid-5">
+          <div class="form-row mb-0">
+            <label data-i18n="common.col.status">상태</label>
+            <select id="filterStatus">
+              <option value="" data-i18n="common.all">전체</option>
+              <option value="OPEN" data-i18n="inquiry.status.OPEN">답변대기</option>
+              <option value="ANSWERED" data-i18n="inquiry.status.ANSWERED">답변완료</option>
+              <option value="CLOSED" data-i18n="inquiry.status.CLOSED">종료</option>
+            </select>
+          </div>
+          <div class="form-row mb-0">
+            <label data-i18n="page.inquiries.categoryLabel">구분</label>
+            <select id="filterCategory">
+              <option value="" data-i18n="common.all">전체</option>
+              <option value="FEATURE" data-i18n="inquiry.category.FEATURE">기능요구사항</option>
+              <option value="INCONVENIENCE" data-i18n="inquiry.category.INCONVENIENCE">불편사항</option>
+              <option value="ETC" data-i18n="inquiry.category.ETC">기타</option>
+            </select>
+          </div>
+          <div class="form-row mb-0" style="grid-column:span 2;">
+            <label data-i18n="page.inquiries.searchLabel">검색 (제목/내용)</label>
+            <input type="text" id="searchInput" data-i18n-placeholder="page.inquiries.searchPlaceholder" placeholder="검색어를 입력하세요" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h3 data-i18n="page.inquiries.listTitle">문의 목록</h3>
+          <span class="hint" id="resultSummary" data-i18n="common.loading">불러오는 중...</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th style="width:90px;" data-i18n="common.col.status">상태</th><th style="width:120px;" data-i18n="page.inquiries.categoryLabel">구분</th><th data-i18n="page.inquiries.titleCol">제목</th><th style="width:110px;" data-i18n="page.inquiries.authorCol">작성자</th><th style="width:150px;" data-i18n="common.col.datetime">작성일시</th><th style="width:80px;" data-i18n="page.inquiries.replyCountCol">답변</th><th style="width:90px;" data-i18n="page.history.detail">상세</th></tr></thead>
+            <tbody id="inquiriesBody"><tr><td colspan="7" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 새 문의 등록 모달 -->
+<div class="modal-overlay" id="newModalOverlay">
+  <div class="modal" style="width:520px;">
+    <div class="modal-header"><h3 data-i18n="page.inquiries.newModalTitle">새 문의 등록</h3><div class="modal-close" onclick="DCL.closeModal('newModalOverlay')">✕</div></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label data-i18n="page.inquiries.categoryLabel">구분</label>
+        <select id="newCategory">
+          <option value="FEATURE" data-i18n="inquiry.category.FEATURE">기능요구사항</option>
+          <option value="INCONVENIENCE" data-i18n="inquiry.category.INCONVENIENCE">불편사항</option>
+          <option value="ETC" data-i18n="inquiry.category.ETC" selected>기타</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label data-i18n="page.inquiries.titleLabel">제목</label>
+        <input type="text" id="newTitle" data-i18n-placeholder="page.inquiries.titlePlaceholder" placeholder="문의 제목을 입력하세요" />
+      </div>
+      <div class="form-row mb-0">
+        <label data-i18n="page.inquiries.contentLabel">내용</label>
+        <textarea id="newContent" rows="6" data-i18n-placeholder="page.inquiries.contentPlaceholder" placeholder="문의하실 내용을 자세히 입력해 주세요"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" id="submitNewBtn" data-i18n="common.submit">등록</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 문의 상세 / 답변 모달 -->
+<div class="modal-overlay" id="detailModalOverlay">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header"><h3 data-i18n="page.inquiries.detailModalTitle">문의 상세</h3><div class="modal-close" onclick="DCL.closeModal('detailModalOverlay')">✕</div></div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/ai-config.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/common.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/inquiries.js"></script>
+</body>
+</html>
