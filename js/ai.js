@@ -20,12 +20,23 @@
           method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({
             contents:[{ parts:[{ text: prompt }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 500 }
+            // thinkingConfig: 최신 Flash 계열은 기본적으로 내부 추론(thinking)을 거치는데,
+            // 이 추론 시간이 응답 지연(느림)의 주 원인이고 모델/버전에 따라 추론 토큰이
+            // maxOutputTokens 예산을 함께 잠식해 답변이 중간에 끊기는 원인이 되기도 한다.
+            // 우리는 KPI 요약처럼 짧고 사실기반인 답변만 필요하므로 추론을 최소화(low)하고,
+            // maxOutputTokens도 넉넉히 잡아 절대 중간에 끊기지 않게 한다.
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 1024,
+              thinkingConfig: { thinkingLevel: "low" }
+            }
           })
         });
         const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const cand = data?.candidates?.[0];
+        const text = cand?.content?.parts?.map(p=>p.text||"").join("") || undefined;
         if (!text) { console.warn("[DCL.AI] Gemini 응답에 결과가 없습니다. 규칙기반으로 대체합니다.", data?.error || data); return null; }
+        if (cand?.finishReason === "MAX_TOKENS") { console.warn("[DCL.AI] Gemini 응답이 토큰 한도로 중간에 잘렸습니다.", text); }
         return text;
       }
       if (cfg.provider === "groq" && cfg.groqApiKey) {
@@ -296,18 +307,39 @@
     fab.addEventListener("click", ()=>{ refreshBadge(); panel.classList.toggle("open"); });
     document.getElementById("aiPanelClose").addEventListener("click", ()=> panel.classList.remove("open"));
 
+    // 응답을 기다리는 동안 입력/전송을 잠가 중복 전송(Enter+클릭 등)을 막고,
+    // "답변 작성 중..." 표시로 "느리다/응답이 없다"는 오해를 방지한다.
+    let sending = false;
     async function send(){
+      if (sending) return;
       const input = document.getElementById("aiPanelInput");
+      const sendBtn = document.getElementById("aiPanelSend");
       const q = input.value.trim();
       if (!q) return;
+      sending = true;
+      input.disabled = true; sendBtn.disabled = true;
       const body = document.getElementById("aiPanelBody");
       body.insertAdjacentHTML("beforeend", '<div class="ai-msg user">'+escapeHtml(q)+'</div>');
       input.value = "";
+      const waitId = "aiWait" + Date.now();
+      body.insertAdjacentHTML("beforeend", '<div class="ai-msg ai-msg-wait" id="'+waitId+'">'+escapeHtml(DCL.t("ai.analyzing"))+'</div>');
       body.scrollTop = body.scrollHeight;
-      const ctx = getContext ? (getContext() || {}) : {};
-      const ans = await AI.ask(q, ctx);
-      body.insertAdjacentHTML("beforeend", '<div class="ai-msg">'+escapeHtml(ans)+'</div>');
-      body.scrollTop = body.scrollHeight;
+      try{
+        const ctx = getContext ? (getContext() || {}) : {};
+        const ans = await AI.ask(q, ctx);
+        const waitEl = document.getElementById(waitId);
+        if (waitEl) waitEl.remove();
+        body.insertAdjacentHTML("beforeend", '<div class="ai-msg">'+escapeHtml(ans)+'</div>');
+      }catch(e){
+        const waitEl = document.getElementById(waitId);
+        if (waitEl) waitEl.remove();
+        body.insertAdjacentHTML("beforeend", '<div class="ai-msg">'+escapeHtml(DCL.t("ai.errorFallback"))+'</div>');
+      }finally{
+        sending = false;
+        input.disabled = false; sendBtn.disabled = false;
+        body.scrollTop = body.scrollHeight;
+        input.focus();
+      }
     }
     document.getElementById("aiPanelSend").addEventListener("click", send);
     document.getElementById("aiPanelInput").addEventListener("keydown", function(e){ if (e.key==="Enter") send(); });
@@ -349,12 +381,22 @@
       '<div id="aiDiagAns" class="mt-8 fs-xs"></div></div>';
 
     document.getElementById("aiDiagClose").addEventListener("click", ()=> popup.style.display="none");
+    let diagAsking = false;
     document.getElementById("aiDiagAsk").addEventListener("click", async function(){
+      if (diagAsking) return;
       const q = document.getElementById("aiDiagQ").value.trim();
       if (!q) return;
+      const askBtn = document.getElementById("aiDiagAsk");
+      diagAsking = true; askBtn.disabled = true;
       document.getElementById("aiDiagAns").textContent = DCL.t("ai.analyzing");
-      const ans = await AI.ask(q, anomaly);
-      document.getElementById("aiDiagAns").textContent = ans;
+      try{
+        const ans = await AI.ask(q, anomaly);
+        document.getElementById("aiDiagAns").textContent = ans;
+      }catch(e){
+        document.getElementById("aiDiagAns").textContent = DCL.t("ai.errorFallback");
+      }finally{
+        diagAsking = false; askBtn.disabled = false;
+      }
     });
   };
 
