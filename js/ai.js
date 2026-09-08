@@ -17,13 +17,23 @@
   // (3) generateContent(한번에 응답) 대신 streamGenerateContent(SSE 스트리밍)로 호출해 토큰이 도착하는
   // 즉시 화면에 흘려보낸다 — 총 생성시간이 같아도 몇 초 안에 글자가 보이기 시작해 크롬 내장 Gemini처럼
   // 체감 속도가 빨라진다. onDelta(deltaText, fullTextSoFar)를 넘기면 청크마다 호출된다.
-  // 20초가 지나도 응답이 없으면 자동으로 중단하고 규칙기반 답변으로 즉시 대체한다(무한 대기 방지).
+  // 타임아웃 정책(중요): 처음엔 "20초 넘으면 무조건 중단"이었으나, 실사용 중 정상적으로 응답이
+  // 진행 중인데도(토큰이 계속 들어오는 중인데도) 총 소요시간이 20초를 넘었다는 이유만으로 강제
+  // 중단되어 이미 받은 내용까지 전부 버려지고 규칙기반 답변으로 대체되는 문제가 발견됐다
+  // (콘솔에 "AbortError: signal is aborted without reason"로 나타남).
+  // 그래서 "총 시간"이 아니라 "무응답 시간"을 기준으로 바꾼다 — 청크가 계속 들어오는 한(느려도)
+  // 죽이지 않고, 완전히 멈춰있는 시간이 STALL_MS를 넘을 때만 중단한다. HARD_CAP_MS는 만약을 위한
+  // 최후 안전판이다. 또한 중단되더라도 그때까지 받은 내용(full)이 있으면 버리지 않고 그대로
+  // 반환한다 — "짧아도 진짜 답"이 "규칙기반 대체 문장"보다 항상 낫다.
+  const STALL_MS = 20000;   // 마지막 데이터 수신 후 이만큼 추가 응답이 없으면 중단
+  const HARD_CAP_MS = 45000; // 전체 소요시간이 이걸 넘으면 무조건 중단(최후 안전판)
   async function callLLM(prompt, opts, onDelta){
     opts = opts || {};
     const maxOutputTokens = opts.maxOutputTokens || 800;
     const thinkingLevel = opts.thinkingLevel || "low";
     const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
-    const timeoutId = controller ? setTimeout(function(){ controller.abort(); }, 20000) : null;
+    const hardCapId = controller ? setTimeout(function(){ controller.abort(); }, HARD_CAP_MS) : null;
+    let watchdogId = null;
     try{
       if (cfg.provider === "gemini" && cfg.geminiApiKey) {
         const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse&key=" + cfg.geminiApiKey;
@@ -51,26 +61,38 @@
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buf = "", full = "", lastFinishReason = null;
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          let idx;
-          while ((idx = buf.indexOf("\n\n")) >= 0) {
-            const block = buf.slice(0, idx);
-            buf = buf.slice(idx + 2);
-            const line = block.split("\n").find(function(l){ return l.indexOf("data:") === 0; });
-            if (!line) continue;
-            const jsonStr = line.slice(5).trim();
-            if (!jsonStr || jsonStr === "[DONE]") continue;
-            try {
-              const chunk = JSON.parse(jsonStr);
-              const cand = chunk?.candidates?.[0];
-              if (cand?.finishReason) lastFinishReason = cand.finishReason;
-              const delta = cand?.content?.parts?.map(p=>p.text||"").join("") || "";
-              if (delta) { full += delta; if (onDelta) onDelta(delta, full); }
-            } catch(e2) { /* 아직 완성되지 않은 청크는 다음 루프에서 이어붙여지므로 건너뜀 */ }
+        let lastActivity = Date.now();
+        if (controller) {
+          watchdogId = setInterval(function(){
+            if (Date.now() - lastActivity > STALL_MS) controller.abort();
+          }, 1000);
+        }
+        try {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            lastActivity = Date.now();
+            buf += decoder.decode(value, { stream: true });
+            let idx;
+            while ((idx = buf.indexOf("\n\n")) >= 0) {
+              const block = buf.slice(0, idx);
+              buf = buf.slice(idx + 2);
+              const line = block.split("\n").find(function(l){ return l.indexOf("data:") === 0; });
+              if (!line) continue;
+              const jsonStr = line.slice(5).trim();
+              if (!jsonStr || jsonStr === "[DONE]") continue;
+              try {
+                const chunk = JSON.parse(jsonStr);
+                const cand = chunk?.candidates?.[0];
+                if (cand?.finishReason) lastFinishReason = cand.finishReason;
+                const delta = cand?.content?.parts?.map(p=>p.text||"").join("") || "";
+                if (delta) { full += delta; if (onDelta) onDelta(delta, full); }
+              } catch(e2) { /* 아직 완성되지 않은 청크는 다음 루프에서 이어붙여지므로 건너뜀 */ }
+            }
           }
+        } catch(streamErr) {
+          // 무응답/최후안전판 타임아웃으로 중간에 끊긴 경우. full이 비어있지 않다면 그대로 살려서 쓴다.
+          console.warn("[DCL.AI] 스트리밍이 중간에 중단되었습니다(응답 지연). 그때까지 받은 내용을 사용합니다.", streamErr);
         }
         if (!full) { console.warn("[DCL.AI] Gemini 스트리밍 응답이 비어 있습니다. 규칙기반으로 대체합니다."); return null; }
         if (lastFinishReason === "MAX_TOKENS") { console.warn("[DCL.AI] Gemini 응답이 토큰 한도로 중간에 잘렸습니다.", full); }
@@ -96,7 +118,8 @@
     }catch(e){
       console.warn("[DCL.AI] LLM 호출 실패, 규칙기반으로 대체합니다", e);
     }finally{
-      if (timeoutId) clearTimeout(timeoutId);
+      if (hardCapId) clearTimeout(hardCapId);
+      if (watchdogId) clearInterval(watchdogId);
     }
     return null;
   }
