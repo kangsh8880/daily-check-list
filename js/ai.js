@@ -12,23 +12,26 @@
   // ---- 외부 LLM 호출 (설정된 경우만) -----------------------------------------
   // gemini-flash-latest: 특정 버전을 하드코딩하지 않고 Google이 관리하는 "최신 Flash 모델" 별칭을 사용.
   // 모델이 세대교체되어도(2.x → 3.x 등) 코드를 매번 수정할 필요 없이 자동으로 최신 무료 모델을 탄다.
-  // opts.maxOutputTokens / opts.thinkingLevel: 짧은 KPI 조회는 low+1024로 빠르게,
-  // "분석/진단/보고서" 같은 심층 질문은 medium+2048로 더 깊고 긴 답변을 받는다 (스마트 하이브리드).
-  async function callLLM(prompt, opts){
+  // 속도 개선(전면 수정): Flash 계열은 thinking을 완전히 끌 수 없어(thinkingLevel "low"가 실질적 하한),
+  // (1) 항상 thinkingLevel:"low"로 지연을 최소화하고, (2) maxOutputTokens을 꼭 필요한 만큼만 요청하며,
+  // (3) generateContent(한번에 응답) 대신 streamGenerateContent(SSE 스트리밍)로 호출해 토큰이 도착하는
+  // 즉시 화면에 흘려보낸다 — 총 생성시간이 같아도 몇 초 안에 글자가 보이기 시작해 크롬 내장 Gemini처럼
+  // 체감 속도가 빨라진다. onDelta(deltaText, fullTextSoFar)를 넘기면 청크마다 호출된다.
+  // 20초가 지나도 응답이 없으면 자동으로 중단하고 규칙기반 답변으로 즉시 대체한다(무한 대기 방지).
+  async function callLLM(prompt, opts, onDelta){
     opts = opts || {};
-    const maxOutputTokens = opts.maxOutputTokens || 1024;
+    const maxOutputTokens = opts.maxOutputTokens || 800;
     const thinkingLevel = opts.thinkingLevel || "low";
+    const controller = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(function(){ controller.abort(); }, 20000) : null;
     try{
       if (cfg.provider === "gemini" && cfg.geminiApiKey) {
-        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + cfg.geminiApiKey;
+        const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse&key=" + cfg.geminiApiKey;
         const res = await fetch(url, {
           method:"POST", headers:{"Content-Type":"application/json"},
+          signal: controller ? controller.signal : undefined,
           body: JSON.stringify({
             contents:[{ parts:[{ text: prompt }] }],
-            // thinkingConfig: 최신 Flash 계열은 기본적으로 내부 추론(thinking)을 거치는데,
-            // 이 추론 시간이 응답 지연의 주 원인이고, 추론 토큰이 maxOutputTokens 예산을
-            // 함께 잠식해 답변이 중간에 끊기는 원인이 되기도 한다. 짧은 KPI 조회는 추론을
-            // 최소화(low)해 속도를 우선하고, 심층 분석 요청은 medium으로 올려 품질을 우선한다.
             generationConfig: {
               temperature: 0.3,
               maxOutputTokens: maxOutputTokens,
@@ -36,17 +39,48 @@
             }
           })
         });
-        const data = await res.json();
-        const cand = data?.candidates?.[0];
-        const text = cand?.content?.parts?.map(p=>p.text||"").join("") || undefined;
-        if (!text) { console.warn("[DCL.AI] Gemini 응답에 결과가 없습니다. 규칙기반으로 대체합니다.", data?.error || data); return null; }
-        if (cand?.finishReason === "MAX_TOKENS") { console.warn("[DCL.AI] Gemini 응답이 토큰 한도로 중간에 잘렸습니다.", text); }
-        return text;
+        if (!res.body || !res.body.getReader) {
+          // 스트리밍을 지원하지 않는 환경 대비 폴백: 배열 형태의 전체 응답에서 마지막 candidate를 사용
+          const data = await res.json();
+          const cand = Array.isArray(data) ? data[data.length-1]?.candidates?.[0] : data?.candidates?.[0];
+          const text = cand?.content?.parts?.map(p=>p.text||"").join("") || undefined;
+          if (!text) { console.warn("[DCL.AI] Gemini 응답에 결과가 없습니다. 규칙기반으로 대체합니다.", data?.error || data); return null; }
+          if (onDelta) onDelta(text, text);
+          return text;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buf = "", full = "", lastFinishReason = null;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let idx;
+          while ((idx = buf.indexOf("\n\n")) >= 0) {
+            const block = buf.slice(0, idx);
+            buf = buf.slice(idx + 2);
+            const line = block.split("\n").find(function(l){ return l.indexOf("data:") === 0; });
+            if (!line) continue;
+            const jsonStr = line.slice(5).trim();
+            if (!jsonStr || jsonStr === "[DONE]") continue;
+            try {
+              const chunk = JSON.parse(jsonStr);
+              const cand = chunk?.candidates?.[0];
+              if (cand?.finishReason) lastFinishReason = cand.finishReason;
+              const delta = cand?.content?.parts?.map(p=>p.text||"").join("") || "";
+              if (delta) { full += delta; if (onDelta) onDelta(delta, full); }
+            } catch(e2) { /* 아직 완성되지 않은 청크는 다음 루프에서 이어붙여지므로 건너뜀 */ }
+          }
+        }
+        if (!full) { console.warn("[DCL.AI] Gemini 스트리밍 응답이 비어 있습니다. 규칙기반으로 대체합니다."); return null; }
+        if (lastFinishReason === "MAX_TOKENS") { console.warn("[DCL.AI] Gemini 응답이 토큰 한도로 중간에 잘렸습니다.", full); }
+        return full;
       }
       if (cfg.provider === "groq" && cfg.groqApiKey) {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method:"POST",
           headers:{"Content-Type":"application/json", "Authorization":"Bearer " + cfg.groqApiKey},
+          signal: controller ? controller.signal : undefined,
           body: JSON.stringify({
             model:"llama-3.1-8b-instant",
             messages:[{role:"user", content: prompt}],
@@ -56,9 +90,14 @@
         const data = await res.json();
         const text = data?.choices?.[0]?.message?.content;
         if (!text) { console.warn("[DCL.AI] Groq 응답에 결과가 없습니다. 규칙기반으로 대체합니다.", data?.error || data); return null; }
+        if (onDelta) onDelta(text, text);
         return text;
       }
-    }catch(e){ console.warn("[DCL.AI] LLM 호출 실패, 규칙기반으로 대체합니다", e); }
+    }catch(e){
+      console.warn("[DCL.AI] LLM 호출 실패, 규칙기반으로 대체합니다", e);
+    }finally{
+      if (timeoutId) clearTimeout(timeoutId);
+    }
     return null;
   }
 
@@ -224,7 +263,7 @@
     return /분석|진단|보고서|리포트|상세히|자세히|개선\s*(방안|제언|점)|제안|원인|근본|리뷰|검토|평가/.test(String(q||""));
   }
 
-  AI.ask = async function(question, ctx){
+  AI.ask = async function(question, ctx, onDelta){
     const rich = isDeepQuestion(question);
     const prompt = rich ? [
       "당신은 제조현장 '부품 일상점검 시스템'의 데이터 분석 어시스턴트입니다. 아래 JSON 데이터만 근거로 답변하세요.",
@@ -252,8 +291,10 @@
       "",
       "질문: " + question
     ].join("\n");
-    const llmOpts = rich ? { maxOutputTokens: 2048, thinkingLevel: "medium" } : { maxOutputTokens: 1024, thinkingLevel: "low" };
-    const llmAns = await callLLM(prompt, llmOpts);
+    // 속도 개선: 심층 분석도 thinkingLevel은 "low"로 고정하고(Flash 계열은 이 값이 지연을 최소화하는 하한),
+    // 답변 길이만 quick보다 넉넉하게(1536) 주어 구조화된 리포트 형태는 유지하면서 응답 시간을 크게 줄인다.
+    const llmOpts = rich ? { maxOutputTokens: 1536, thinkingLevel: "low" } : { maxOutputTokens: 800, thinkingLevel: "low" };
+    const llmAns = await callLLM(prompt, llmOpts, onDelta);
     if (llmAns) return { text: llmAns.trim(), rich: rich };
     return { text: ruleBasedAnswer(question, ctx), rich: false };
   };
@@ -347,20 +388,31 @@
       const body = document.getElementById("aiPanelBody");
       body.insertAdjacentHTML("beforeend", '<div class="ai-msg user">'+escapeHtml(q)+'</div>');
       input.value = "";
-      const waitId = "aiWait" + Date.now();
-      body.insertAdjacentHTML("beforeend", '<div class="ai-msg ai-msg-wait" id="'+waitId+'">'+escapeHtml(DCL.t("ai.analyzing"))+'</div>');
+      // 답변 말풍선을 먼저 만들어두고, 스트리밍으로 도착하는 토큰을 그 안에 실시간으로 흘려보낸다
+      // (완료를 기다리지 않고 몇 초 안에 글자가 나타나기 시작 — 체감 속도의 핵심).
+      const ansId = "aiAns" + Date.now();
+      body.insertAdjacentHTML("beforeend", '<div class="ai-msg ai-msg-wait" id="'+ansId+'">'+escapeHtml(DCL.t("ai.analyzing"))+'</div>');
       body.scrollTop = body.scrollHeight;
+      let started = false;
+      function onDelta(delta, full){
+        const el = document.getElementById(ansId);
+        if (!el) return;
+        if (!started) { started = true; el.classList.remove("ai-msg-wait"); }
+        el.textContent = full; // 스트리밍 중에는 서식 없는 원문으로 표시하고, 완료 후 마크다운으로 최종 렌더한다
+        body.scrollTop = body.scrollHeight;
+      }
       try{
         const ctx = getContext ? (getContext() || {}) : {};
-        const ans = await AI.ask(q, ctx);
-        const waitEl = document.getElementById(waitId);
-        if (waitEl) waitEl.remove();
-        const bodyHtml = ans.rich ? renderMarkdownLite(ans.text) : escapeHtml(ans.text);
-        body.insertAdjacentHTML("beforeend", '<div class="ai-msg'+(ans.rich?' ai-msg-rich':'')+'">'+bodyHtml+'</div>');
+        const ans = await AI.ask(q, ctx, onDelta);
+        const el = document.getElementById(ansId);
+        if (el) {
+          el.classList.remove("ai-msg-wait");
+          if (ans.rich) { el.classList.add("ai-msg-rich"); el.innerHTML = renderMarkdownLite(ans.text); }
+          else { el.textContent = ans.text; }
+        }
       }catch(e){
-        const waitEl = document.getElementById(waitId);
-        if (waitEl) waitEl.remove();
-        body.insertAdjacentHTML("beforeend", '<div class="ai-msg">'+escapeHtml(DCL.t("ai.errorFallback"))+'</div>');
+        const el = document.getElementById(ansId);
+        if (el) { el.classList.remove("ai-msg-wait"); el.textContent = DCL.t("ai.errorFallback"); }
       }finally{
         sending = false;
         input.disabled = false; sendBtn.disabled = false;
@@ -454,8 +506,15 @@
       const askBtn = document.getElementById("aiDiagAsk");
       diagAsking = true; askBtn.disabled = true;
       document.getElementById("aiDiagAns").textContent = DCL.t("ai.analyzing");
+      let started = false;
+      function onDelta(delta, full){
+        const el = document.getElementById("aiDiagAns");
+        if (!el) return;
+        if (!started) { started = true; }
+        el.textContent = full;
+      }
       try{
-        const ans = await AI.ask(q, anomaly);
+        const ans = await AI.ask(q, anomaly, onDelta);
         const ansEl = document.getElementById("aiDiagAns");
         if (ans.rich) { ansEl.innerHTML = renderMarkdownLite(ans.text); }
         else { ansEl.textContent = ans.text; }
