@@ -194,12 +194,6 @@ a:hover{ text-decoration:underline; }
 .kpi-tile .kpi-value.unit-percent{ color:var(--accent-blue); }
 .kpi-tile .kpi-value.unit-alert{ color:var(--accent-red); }
 .kpi-tile .kpi-sub{ font-size:var(--fs-xs); color:var(--text-mute); margin-top:4px; }
-.kpi-tile .ai-chip{
-  position:absolute; top:12px; right:12px; width:24px; height:24px; border-radius:50%;
-  background:var(--pastel-purple); border:1px solid var(--border); display:flex; align-items:center; justify-content:center;
-  font-size:var(--fs-sm); color:var(--accent-blue); cursor:pointer; font-weight:700;
-}
-.kpi-tile .ai-chip:hover{ border-color:var(--border-strong); }
 /* 대시보드 구축 원칙: 클릭 가능한 KPI 카드는 호버 시 위로 살짝 떠오르는(lift)
    인터랙션 + 한 단계 더 진한 그림자(--shadow-lg)로 강조한다 (원색 사용 없이
    그림자/움직임으로만 강조; 색상 배경 변경 금지) */
@@ -401,72 +395,6 @@ tbody tr.row-focus-highlight{ background:var(--pastel-yellow); transition:backgr
 .judge-btn.sel-ok{ background:var(--pastel-green); border-color:var(--border-strong); color:var(--btn-success-text); }
 .judge-btn.sel-ng{ background:var(--pastel-red); border-color:var(--border-strong); color:var(--accent-red); }
 .offline-banner{ background:var(--pastel-yellow); border:1px solid var(--border-strong); border-radius:var(--radius-sm); padding:10px 12px; font-size:var(--fs-xs); margin-bottom:12px; }
-
-/* AI 어시스턴트 위젯 (탑바 우측 배치, 은은한 펄스로 "AI 탑재" 신호를 준다) */
-.ai-fab{
-  position:relative; display:inline-flex; align-items:center; gap:6px;
-  padding:7px 14px 7px 11px; border-radius:999px; border:1px solid var(--border);
-  background:linear-gradient(135deg, var(--pastel-blue-soft), var(--pastel-blue));
-  color:var(--btn-primary-text); font-size:var(--fs-sm); font-weight:700; letter-spacing:.2px;
-  cursor:pointer; box-shadow:var(--shadow); z-index:5; user-select:none;
-  animation:ai-heartbeat 2.6s ease-in-out infinite;
-}
-.ai-fab:hover{ border-color:var(--border-strong); }
-.ai-fab-ico{ font-size:14px; line-height:1; display:inline-block; color:var(--accent-blue); animation:ai-twinkle 2.6s ease-in-out infinite; }
-.ai-fab-label{ line-height:1; }
-.ai-fab-ring{
-  position:absolute; inset:-2px; border-radius:999px; pointer-events:none;
-  border:1px solid color-mix(in srgb, var(--accent-blue) 55%, transparent);
-  animation:ai-glow-ring 2.6s ease-in-out infinite;
-}
-.ai-fab-badge{
-  position:absolute; top:-6px; right:-6px; min-width:16px; height:16px; padding:0 4px; border-radius:999px;
-  background:var(--pastel-red); color:var(--accent-red); border:1px solid var(--border-strong);
-  font-size:10px; font-weight:800; line-height:14px; text-align:center;
-}
-@keyframes ai-heartbeat{
-  0%,60%,100%{ box-shadow:0 0 0 0 color-mix(in srgb, var(--accent-blue) 32%, transparent); }
-  15%{ box-shadow:0 0 0 5px color-mix(in srgb, var(--accent-blue) 16%, transparent); }
-  45%{ box-shadow:0 0 0 3px color-mix(in srgb, var(--accent-blue) 9%, transparent); }
-}
-@keyframes ai-glow-ring{
-  0%,100%{ opacity:.55; transform:scale(1); }
-  50%{ opacity:0; transform:scale(1.3); }
-}
-@keyframes ai-twinkle{
-  0%,100%{ opacity:1; transform:scale(1) rotate(0deg); }
-  50%{ opacity:.5; transform:scale(1.18) rotate(14deg); }
-}
-.ai-panel{
-  position:fixed; right:22px; top:66px; width:340px; max-width:88vw; max-height:70vh; background:var(--panel);
-  border:1px solid var(--border-strong); border-radius:var(--radius); box-shadow:var(--shadow-lg); display:none; flex-direction:column; z-index:90;
-}
-.ai-panel.open{ display:flex; }
-.ai-panel-head{
-  padding:12px 14px; border-bottom:1px solid var(--border); font-weight:700; font-size:var(--fs-sm);
-  display:flex; justify-content:space-between; align-items:center;
-  background:linear-gradient(135deg, var(--pastel-blue-soft), var(--pastel-blue)); border-radius:var(--radius) var(--radius) 0 0;
-}
-.ai-panel-body{ padding:12px 14px; overflow-y:auto; flex:1; font-size:var(--fs-sm); }
-.ai-msg{ margin-bottom:10px; padding:8px 10px; border-radius:10px; background:var(--bg-soft); }
-.ai-msg.user{ background:var(--pastel-blue-soft); text-align:right; }
-.ai-msg-wait{ color:var(--text-mute); font-style:italic; }
-/* AI 호출 실패(규칙기반 대체 없음) — 솔직하게 실패를 알리고 재시도를 유도. 배경은 파스텔 레드, 글자는 강조색(빨강)만 사용 */
-.ai-msg-error{ background:var(--pastel-red-soft); color:var(--accent-red); }
-.ai-retry-btn{ margin-left:6px; }
-/* 심층 분석(리치) 답변용 경량 마크다운 스타일 — 원색 없이 기존 강조색(파랑)만 사용 */
-.ai-msg-rich{ line-height:1.6; }
-.ai-msg-rich > div{ margin-top:6px; }
-.ai-msg-rich > div:first-child{ margin-top:0; }
-.ai-md-h{ font-weight:700; color:var(--accent-blue); margin-top:12px !important; }
-.ai-md-ul, .ai-md-ol{ margin:4px 0 4px 18px; padding:0; }
-.ai-md-ul li, .ai-md-ol li{ margin-bottom:4px; }
-.ai-panel-input{ display:flex; gap:6px; padding:10px 12px; border-top:1px solid var(--border); }
-.ai-panel-input input{ flex:1; }
-@media (max-width:640px){
-  .ai-fab-label{ display:none; } /* 좁은 화면에서는 아이콘+배지만 남겨 탑바 줄바꿈 방지 */
-  .ai-panel{ right:10px; left:10px; width:auto; top:60px; }
-}
 
 /* 로그인 필요 없음 배지 등 상태색 */
 .status-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:5px; }
