@@ -19,7 +19,7 @@
 
   <div class="main">
     <div class="topbar">
-      <div><div class="page-title" data-i18n="page.report.title">일일보고</div><div class="page-desc" data-i18n="page.report.desc">전일 점검현황 · 금일 점검계획 · 명일 준비사항을 한눈에 확인합니다</div></div>
+      <div class="topbar-titles"><div class="page-title" data-i18n="page.report.title">일일보고</div><div class="page-desc" data-i18n="page.report.desc">전일 점검현황 · 금일 점검계획 · 명일 준비사항을 한눈에 확인합니다</div></div>
       <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
     </div>
 
@@ -27,8 +27,11 @@
 
       <!-- 조회일 -->
       <div class="card">
-        <div class="card-head">
-          <h3 data-i18n="page.report.refDateLabel">조회일</h3>
+        <div class="card-head mb-0">
+          <div class="flex" style="align-items:baseline; gap:10px; flex-wrap:wrap;">
+            <h3 data-i18n="page.report.refDateLabel">조회일</h3>
+            <span class="hint" data-i18n="page.report.refDateHint">조회일을 기준으로 전일·금일·명일 현황이 함께 이동합니다</span>
+          </div>
           <div class="flex gap-8" style="flex-wrap:wrap; align-items:center;">
             <button class="btn btn-sm" id="prevDayBtn" data-i18n="page.report.prevDayBtn">◀ 전일</button>
             <button class="btn btn-sm btn-primary" id="todayBtn" data-i18n="page.report.todayBtn">오늘</button>
@@ -36,7 +39,6 @@
             <input type="date" id="refDateInput" />
           </div>
         </div>
-        <div class="text-mute fs-xs" data-i18n="page.report.refDateHint">조회일을 기준으로 전일·금일·명일 현황이 함께 이동합니다</div>
       </div>
 
       <!-- 1. 전일 점검현황 -->
