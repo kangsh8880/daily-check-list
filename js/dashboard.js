@@ -1,5 +1,5 @@
 // ============================================================================
-// 대시보드 - KPI 타일(필터 미적용) + 추이차트(기간필터 적용) + AI
+// 대시보드 - KPI 타일(필터 미적용) + 추이차트(기간필터 적용)
 // ============================================================================
 let ALL_ASSIGNMENTS=[], ALL_PARTS=[], ALL_INSPECTIONS=[], ALL_ACTIONS=[], ALL_INSPECTORS=[];
 let RATE_CHART=null, ABN_CHART=null, ACTION_CHART=null;
@@ -25,9 +25,7 @@ document.addEventListener("DOMContentLoaded", async function(){
   renderTodayKpis();
   renderMyTodayList();
   renderTrends();
-  wireAiChips();
   wireKpiTileClicks();
-  DCL.AI.mountWidget(buildAiContext);
 });
 
 async function loadAll(){
@@ -142,7 +140,6 @@ function renderTodayKpis(){
     overdueList: overdue.map(a=>({ part_name: partMap[a.part_id]?.part_name||"-", issue_desc:a.issue_desc }))
   };
 }
-function buildAiContext(){ return LAST_CTX; }
 
 // ---- 개인별 오늘 할 일 (로그인한 본인의 점검/조치/승인 대상을 모두 모아서 표시, 필터 미적용) ----
 // 대시보드 구축 원칙: 로그인한 인원이 오늘 처리해야 할 업무(점검/조치/승인)를 모두 한 곳에서
@@ -282,29 +279,8 @@ function renderTrends(){
   });
 }
 
-// ---- AI 진단 칩 (✦ 아이콘 클릭 - 원인/영향/조치 분석 팝업) --------------------------
-// 칩 클릭은 KPI 타일 전체의 클릭(목록 팝업)과 별개 동작이므로 이벤트 버블링을 막는다.
-function wireAiChips(){
-  document.getElementById("chipRate").addEventListener("click", function(e){
-    e.stopPropagation();
-    DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.rate, input_value: Math.round(LAST_CTX.rate*10)/10, lower_limit:95, upper_limit:null, judge_type:"NUMERIC" }, e.currentTarget);
-  });
-  document.getElementById("chipMiss").addEventListener("click", function(e){
-    e.stopPropagation();
-    DCL.AI.showDiagnosePopup({ item_name:DCL.t("page.dashboard.kpi.missLabel"), input_value: LAST_CTX.missCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
-  });
-  document.getElementById("chipAbn").addEventListener("click", function(e){
-    e.stopPropagation();
-    DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.abnormal, input_value: LAST_CTX.abnormalCnt, lower_limit:null, upper_limit:0, judge_type:"NUMERIC" }, e.currentTarget);
-  });
-  document.getElementById("chipAction").addEventListener("click", function(e){
-    e.stopPropagation();
-    DCL.AI.showDiagnosePopup({ item_name:KPI_NAMES.action, input_value: Math.round(LAST_CTX.actionDoneRate*10)/10, lower_limit:90, upper_limit:null, judge_type:"NUMERIC" }, e.currentTarget);
-  });
-}
-
 // ---- KPI 타일 클릭 → 해당 리스트 팝업 (대시보드 구축 원칙: 각 KPI는 클릭 가능해야 하며,
-// 클릭 시 해당되는 리스트가 팝업으로 표시되어야 함. ✦ AI진단 칩과는 별개 동작) --------------
+// 클릭 시 해당되는 리스트가 팝업으로 표시되어야 함) --------------------------------------
 function wireKpiTileClicks(){
   document.querySelectorAll(".kpi-tile[data-kpi]").forEach(function(tile){
     tile.addEventListener("click", function(){ openKpiListModal(tile.dataset.kpi); });
