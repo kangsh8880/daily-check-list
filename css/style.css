@@ -209,6 +209,13 @@ a:hover{ text-decoration:underline; }
 .kpi-tile.clickable{ cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .15s; }
 .kpi-tile.clickable:hover{ border-color:var(--border-strong); box-shadow:var(--shadow-lg); transform:translateY(-3px); }
 
+/* 일일보고(report.html) 전용 - KPI 박스 높이를 기본(.kpi-tile) 대비 약 30% 축소.
+   패딩/글자크기만 줄이고 색상·정렬·강조 규칙은 그대로 유지한다 (report.html에서만 사용). */
+.kpi-tile-sm{ padding:10px 14px; }
+.kpi-tile-sm .kpi-label{ font-size:var(--fs-xs); }
+.kpi-tile-sm .kpi-value{ font-size:var(--fs-xl); margin-top:4px; line-height:1.15; }
+.kpi-tile-sm .kpi-sub{ margin-top:2px; }
+
 /* ---------------- 버튼 ---------------- */
 .btn{
   display:inline-flex; align-items:center; justify-content:center; gap:6px;
