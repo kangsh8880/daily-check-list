@@ -151,6 +151,16 @@ a:hover{ text-decoration:underline; }
 .card-head h3{ margin:0; font-size:var(--fs-md); font-weight:700; }
 .card-head .hint{ font-size:var(--fs-xs); color:var(--text-mute); }
 
+/* 일일보고(report.html) - 블록(전일/금일/명일) 헤더의 원형 순번 배지.
+   원색 대신 파스텔 블루 배경 + 회색 테두리로 KPI 카드와 동일한 절제된 톤을 유지한다. */
+.report-block-head h3{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.report-block-num{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:50%; flex:none;
+  background:var(--pastel-blue); color:var(--text); border:1px solid var(--border);
+  font-weight:800; font-size:var(--fs-sm);
+}
+
 /* "오늘 내 할 일" 카드 - 점검/조치/승인 섹션 구분 */
 .my-task-section{ margin-top:16px; }
 .my-task-section:first-child{ margin-top:0; }
