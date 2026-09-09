@@ -29,25 +29,21 @@
       <!-- KPI 타일: 필터 미적용 (금일/최근7일 고정 기준) -->
       <div class="grid grid-4">
         <div class="kpi-tile clickable" data-kpi="rate" title="클릭하면 목록이 표시됩니다">
-          <div class="ai-chip no-print" id="chipRate" title="AI 진단">✦</div>
           <div class="kpi-label" data-i18n="page.dashboard.kpi.rateLabel">금일 점검율</div>
           <div class="kpi-value unit-percent" id="kpiRate">0.0%</div>
           <div class="kpi-sub" id="kpiRateSub">대상 0건 중 0건 완료</div>
         </div>
         <div class="kpi-tile clickable" data-kpi="miss" title="클릭하면 목록이 표시됩니다">
-          <div class="ai-chip no-print" id="chipMiss" title="AI 진단">✦</div>
           <div class="kpi-label" data-i18n="page.dashboard.kpi.missLabel">금일 미점검</div>
           <div class="kpi-value unit-alert" id="kpiMiss">0</div>
           <div class="kpi-sub" data-i18n="page.dashboard.kpi.missSub">건 (배정 대비 미완료)</div>
         </div>
         <div class="kpi-tile clickable" data-kpi="abn" title="클릭하면 목록이 표시됩니다">
-          <div class="ai-chip no-print" id="chipAbn" title="AI 진단">✦</div>
           <div class="kpi-label" data-i18n="page.dashboard.kpi.abnLabel">금일 이상 발견</div>
           <div class="kpi-value" id="kpiAbn">0</div>
           <div class="kpi-sub" data-i18n="page.dashboard.kpi.abnSub">건</div>
         </div>
         <div class="kpi-tile clickable" data-kpi="action" title="클릭하면 목록이 표시됩니다">
-          <div class="ai-chip no-print" id="chipAction" title="AI 진단">✦</div>
           <div class="kpi-label" data-i18n="page.dashboard.kpi.actionRateLabel">조치 이행율 (최근7일)</div>
           <div class="kpi-value unit-percent" id="kpiActionRate">0.0%</div>
           <div class="kpi-sub" id="kpiActionSub">승인완료 0 / 전체 0건 · 지연 0건</div>
@@ -111,10 +107,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="js/supabase-config.js"></script>
-<script src="js/ai-config.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/common.js"></script>
-<script src="js/ai.js"></script>
 <script src="js/dashboard.js"></script>
 </body>
 </html>
