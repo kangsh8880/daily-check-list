@@ -15,8 +15,8 @@ const CATEGORY_LABEL_KEY = {
   inspectors: "nav.inspectors",
   history: "nav.history",
   inquiries: "nav.inquiries",
-  i18nAdmin: "nav.i18n",
-  ai: "ai.title"
+  report: "nav.report",
+  i18nAdmin: "nav.i18n"
 };
 
 document.addEventListener("DOMContentLoaded", async function(){
