@@ -253,17 +253,6 @@
     sidebar.querySelectorAll(".nav-item").forEach(function(a){ a.addEventListener("click", closeNav); });
   };
 
-  // ---- 버전 표시 (좌측 사이드바 브랜드 영역, HTML 수정 불필요) --------------------
-  DCL.APP_VERSION = "v1.1";
-  DCL.initVersionBadge = function(){
-    const sub = document.querySelector(".sidebar .brand .subtitle");
-    if (!sub || sub.querySelector(".version-badge")) return;
-    const badge = document.createElement("span");
-    badge.className = "version-badge";
-    badge.textContent = " · " + DCL.APP_VERSION;
-    sub.appendChild(badge);
-  };
-
   // ---- 사용자 설명서 버튼 (topbar-right 우측 상단, HTML 수정 불필요) -----------------
   // v1.1: 로그인~로그아웃 전체 프로세스 + 오늘 내 점검목록/KPI 클릭 팝업/KPI 디자인 개선/
   // 점검자 이메일 항목을 반영한 Word 사용자 활용 설명서를 새 탭에서 엽니다.
@@ -302,7 +291,6 @@
       const insp = DCL.requireAuth(opts.roles);
       if (!insp) return null;
       DCL.renderSidebar(activeHref);
-      DCL.initVersionBadge();
       DCL.initMobileNav();
       const logoutBtn = document.getElementById("logoutBtn");
       if (logoutBtn) logoutBtn.addEventListener("click", DCL.logout);
