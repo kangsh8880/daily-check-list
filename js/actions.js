@@ -3,6 +3,10 @@
 // ============================================================================
 let ALL_ACTIONS=[], ALL_PARTS=[], ALL_INSPECTORS=[];
 
+// 심각도/상태 배지는 목록 테이블과 KPI 클릭 팝업 양쪽에서 공통으로 쓰므로 모듈 스코프로 뺀다.
+const SEV_BADGE = { MINOR:()=>`<span class="badge badge-gray">${DCL.t("sev.MINOR")}</span>`, MAJOR:()=>`<span class="badge badge-yellow">${DCL.t("sev.MAJOR")}</span>`, CRITICAL:()=>`<span class="badge badge-red">${DCL.t("sev.CRITICAL")}</span>` };
+const STATUS_BADGE = { OPEN:()=>`<span class="badge badge-red">${DCL.t("status.OPEN")}</span>`, IN_PROGRESS:()=>`<span class="badge badge-yellow">${DCL.t("status.IN_PROGRESS")}</span>`, DONE:()=>`<span class="badge badge-blue">${DCL.t("status.DONE")}</span>`, APPROVED:()=>`<span class="badge badge-green">${DCL.t("status.APPROVED")}</span>`, REJECTED:()=>`<span class="badge badge-red">${DCL.t("status.REJECTED")}</span>` };
+
 document.addEventListener("DOMContentLoaded", async function(){
   const insp = DCL.initPage("actions.html", null);
   if (!insp) return;
@@ -16,6 +20,7 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("completePhoto").dataset.url = url;
     document.getElementById("completePhotoPreview").innerHTML = `<img src="${url}" style="max-width:120px;border-radius:8px;margin-top:6px;border:1px solid var(--border);"/>`;
   });
+  wireKpiTileClicks();
 
   await loadAll();
 });
@@ -42,6 +47,12 @@ function renderKpis(){
   document.getElementById("kpiOverdue").textContent = DCL.fmtCount(overdue);
 }
 
+// 조치가 "기한초과"인지 여부: 아직 승인/반려로 끝나지 않은(OPEN/IN_PROGRESS) 건 중 기한이 지난 것.
+// DONE(완료대기)은 이미 현장 조치는 끝난 상태라 기한초과 집계에서 제외한다(대시보드 KPI 계산과 동일 기준).
+function isOverdue(a, today){
+  return ["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today;
+}
+
 function renderTable(){
   const status = document.getElementById("filterStatus").value;
   const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
@@ -49,17 +60,16 @@ function renderTable(){
   const today = DCL.today();
 
   let list = ALL_ACTIONS.slice();
-  if (status) list = list.filter(a=>a.status===status);
-
-  const sevBadge = { MINOR:`<span class="badge badge-gray">${DCL.t("sev.MINOR")}</span>`, MAJOR:`<span class="badge badge-yellow">${DCL.t("sev.MAJOR")}</span>`, CRITICAL:`<span class="badge badge-red">${DCL.t("sev.CRITICAL")}</span>` };
-  const statusBadge = { OPEN:`<span class="badge badge-red">${DCL.t("status.OPEN")}</span>`, IN_PROGRESS:`<span class="badge badge-yellow">${DCL.t("status.IN_PROGRESS")}</span>`, DONE:`<span class="badge badge-blue">${DCL.t("status.DONE")}</span>`, APPROVED:`<span class="badge badge-green">${DCL.t("status.APPROVED")}</span>`, REJECTED:`<span class="badge badge-red">${DCL.t("status.REJECTED")}</span>` };
+  // "기한초과"는 실제 status 컬럼 값이 아니라 계산된 값이므로 별도로 필터링한다.
+  if (status === "OVERDUE") list = list.filter(a=>isOverdue(a, today));
+  else if (status) list = list.filter(a=>a.status===status);
 
   const body = document.getElementById("actionsBody");
   if (!list.length) { body.innerHTML = `<tr><td colspan="7" class="empty-state">${DCL.t("page.actions.emptyList")}</td></tr>`; return; }
 
   body.innerHTML = list.map(a => {
     const p = partMap[a.part_id];
-    const overdue = ["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today;
+    const overdue = isOverdue(a, today);
     let actionsHtml = "";
     if (a.status === "OPEN") actionsHtml = `<button class="btn btn-sm btn-primary" onclick="openAssign('${a.id}')">${DCL.t("page.actions.btnAssign")}</button>`;
     else if (a.status === "IN_PROGRESS") actionsHtml = `<button class="btn btn-sm btn-success" onclick="openComplete('${a.id}')">${DCL.t("page.actions.btnComplete")}</button> <button class="btn btn-sm" onclick="openAssign('${a.id}')">${DCL.t("page.actions.btnReassign")}</button>`;
@@ -70,15 +80,58 @@ function renderTable(){
     return `<tr id="actionRow-${a.id}">
       <td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td>
       <td style="max-width:220px;">${esc(a.issue_desc)}</td>
-      <td>${sevBadge[a.severity]||a.severity}</td>
+      <td>${SEV_BADGE[a.severity]?SEV_BADGE[a.severity]():a.severity}</td>
       <td class="text-mute">${a.assignee_id ? esc(inspMap[a.assignee_id]?.name||"-") : "-"}</td>
       <td class="${overdue?'text-red':'text-mute'}">${a.due_date ? DCL.fmtDate(a.due_date) : "-"}${overdue?' '+DCL.t("page.actions.overdueTag"):''}</td>
-      <td>${statusBadge[a.status]}</td>
+      <td>${STATUS_BADGE[a.status]?STATUS_BADGE[a.status]():a.status}</td>
       <td class="row-actions">${actionsHtml}</td>
     </tr>`;
   }).join("");
 
   focusRowFromUrl();
+}
+
+// ---- KPI 타일 클릭 → 해당 리스트 팝업 (대시보드 구축 원칙: 각 KPI는 클릭 가능해야 하며,
+// 클릭 시 해당되는 리스트가 팝업으로 표시되어야 함) --------------------------------------
+function wireKpiTileClicks(){
+  document.querySelectorAll(".kpi-tile[data-kpi]").forEach(function(tile){
+    tile.addEventListener("click", function(){ openKpiListModal(tile.dataset.kpi); });
+  });
+}
+
+function openKpiListModal(kind){
+  const today = DCL.today();
+  const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
+  const inspMap = Object.fromEntries(ALL_INSPECTORS.map(i=>[i.id,i]));
+
+  const titleKey = {
+    OPEN: "page.actions.kpiOpen",
+    IN_PROGRESS: "page.actions.kpiProgress",
+    DONE: "page.actions.kpiDone",
+    OVERDUE: "page.actions.kpiOverdue"
+  }[kind];
+
+  const list = kind === "OVERDUE"
+    ? ALL_ACTIONS.filter(a=>isOverdue(a, today))
+    : ALL_ACTIONS.filter(a=>a.status===kind);
+
+  const head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("page.actions.colIssue")}</th><th>${DCL.t("page.actions.colSeverity")}</th><th>${DCL.t("common.col.assignee")}</th><th>${DCL.t("common.col.dueDate")}</th><th>${DCL.t("common.col.status")}</th></tr>`;
+  const rows = list.map(a => {
+    const p = partMap[a.part_id];
+    const overdue = isOverdue(a, today);
+    return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td>
+      <td style="max-width:220px;">${esc(a.issue_desc)}</td>
+      <td>${SEV_BADGE[a.severity]?SEV_BADGE[a.severity]():a.severity}</td>
+      <td class="text-mute">${a.assignee_id ? esc(inspMap[a.assignee_id]?.name||"-") : "-"}</td>
+      <td class="${overdue?'text-red':'text-mute'}">${a.due_date ? DCL.fmtDate(a.due_date) : "-"}${overdue?' '+DCL.t("page.actions.overdueTag"):''}</td>
+      <td>${STATUS_BADGE[a.status]?STATUS_BADGE[a.status]():a.status}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("kpiListModalTitle").textContent = DCL.t(titleKey);
+  document.getElementById("kpiListModalHead").innerHTML = head;
+  document.getElementById("kpiListModalBody").innerHTML = rows || `<tr><td colspan="6" class="empty-state">${DCL.t("page.actions.emptyList")}</td></tr>`;
+  DCL.openModal("kpiListModalOverlay");
 }
 
 // 대시보드 "오늘 내 할 일"의 조치/승인 카드에서 넘어온 경우(actions.html?focus=<action_id>),
