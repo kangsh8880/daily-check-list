@@ -25,10 +25,10 @@
 
     <div class="content">
       <div class="grid grid-4">
-        <div class="kpi-tile"><div class="kpi-label" data-i18n="page.actions.kpiOpen">대기(OPEN)</div><div class="kpi-value" id="kpiOpen">0</div></div>
-        <div class="kpi-tile"><div class="kpi-label" data-i18n="page.actions.kpiProgress">조치중</div><div class="kpi-value" id="kpiProgress">0</div></div>
-        <div class="kpi-tile"><div class="kpi-label" data-i18n="page.actions.kpiDone">완료대기(승인전)</div><div class="kpi-value" id="kpiDone">0</div></div>
-        <div class="kpi-tile"><div class="kpi-label unit-alert" data-i18n="page.actions.kpiOverdue">기한초과</div><div class="kpi-value unit-alert" id="kpiOverdue">0</div></div>
+        <div class="kpi-tile clickable" data-kpi="OPEN" title="클릭하면 목록이 표시됩니다"><div class="kpi-label" data-i18n="page.actions.kpiOpen">대기(OPEN)</div><div class="kpi-value" id="kpiOpen">0</div></div>
+        <div class="kpi-tile clickable" data-kpi="IN_PROGRESS" title="클릭하면 목록이 표시됩니다"><div class="kpi-label" data-i18n="page.actions.kpiProgress">조치중</div><div class="kpi-value" id="kpiProgress">0</div></div>
+        <div class="kpi-tile clickable" data-kpi="DONE" title="클릭하면 목록이 표시됩니다"><div class="kpi-label" data-i18n="page.actions.kpiDone">완료대기(승인전)</div><div class="kpi-value" id="kpiDone">0</div></div>
+        <div class="kpi-tile clickable" data-kpi="OVERDUE" title="클릭하면 목록이 표시됩니다"><div class="kpi-label unit-alert" data-i18n="page.actions.kpiOverdue">기한초과</div><div class="kpi-value unit-alert" id="kpiOverdue">0</div></div>
       </div>
 
       <div class="card">
@@ -42,6 +42,7 @@
               <option value="DONE" data-i18n="status.DONE">완료(승인대기)</option>
               <option value="APPROVED" data-i18n="status.APPROVED">승인완료</option>
               <option value="REJECTED" data-i18n="status.REJECTED">반려</option>
+              <option value="OVERDUE" data-i18n="page.actions.kpiOverdue">기한초과</option>
             </select>
           </div>
         </div>
@@ -98,6 +99,16 @@
   <div class="modal" style="width:480px;">
     <div class="modal-header"><h3 data-i18n="page.actions.reviewModalTitle">조치 승인</h3><div class="modal-close" onclick="DCL.closeModal('reviewModalOverlay')">✕</div></div>
     <div class="modal-body" id="reviewBody"></div>
+  </div>
+</div>
+
+<!-- KPI 타일 클릭 시 표시되는 목록 팝업 -->
+<div class="modal-overlay" id="kpiListModalOverlay">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header"><h3 id="kpiListModalTitle"></h3><div class="modal-close" onclick="DCL.closeModal('kpiListModalOverlay')">✕</div></div>
+    <div class="modal-body">
+      <div class="table-wrap"><table><thead id="kpiListModalHead"></thead><tbody id="kpiListModalBody"></tbody></table></div>
+    </div>
   </div>
 </div>
 
