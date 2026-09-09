@@ -6,7 +6,7 @@
 let ALL_PARTS=[], ALL_TYPES=[], ALL_INSPECTORS=[], ALL_ASSIGNMENTS=[], ALL_ACTIONS=[];
 let RANGE_INSPECTIONS=[];
 let REF_DATE = "";
-let STATE = { y:{}, t:{} }; // 팝업 렌더링에 쓰는 최근 계산 결과 보관
+let STATE = { y:{}, t:{}, tmr:{} }; // 팝업 렌더링에 쓰는 최근 계산 결과 보관
 
 const SEV_BADGE = { MINOR:()=>`<span class="badge badge-gray">${DCL.t("sev.MINOR")}</span>`, MAJOR:()=>`<span class="badge badge-yellow">${DCL.t("sev.MAJOR")}</span>`, CRITICAL:()=>`<span class="badge badge-red">${DCL.t("sev.CRITICAL")}</span>` };
 const STATUS_BADGE = { OPEN:()=>`<span class="badge badge-red">${DCL.t("status.OPEN")}</span>`, IN_PROGRESS:()=>`<span class="badge badge-yellow">${DCL.t("status.IN_PROGRESS")}</span>`, DONE:()=>`<span class="badge badge-blue">${DCL.t("status.DONE")}</span>`, APPROVED:()=>`<span class="badge badge-green">${DCL.t("status.APPROVED")}</span>`, REJECTED:()=>`<span class="badge badge-red">${DCL.t("status.REJECTED")}</span>` };
@@ -129,7 +129,7 @@ function renderBlock2(today){
   document.getElementById("kpiTRate").textContent = DCL.fmtPercent(rate);
 
   const remainList = dueIds.filter(id=>!doneIds.has(id));
-  STATE.t = { today, dueIds, doneIds, remainList };
+  STATE.t = { today, dueIds, doneIds, remainList, tInspections };
 
   renderByInspectorTable(dueIds, doneIds);
 }
@@ -159,6 +159,7 @@ function renderByInspectorTable(dueIds, doneIds){
 }
 
 // ---- 3. 명일 점검계획 준비사항 --------------------------------------------------
+// 부품/조치 목록은 화면에 항상 펼쳐두지 않고, 아래 두 KPI 타일 클릭 시 공용 팝업으로만 보여준다.
 function renderBlock3(tomorrow){
   const dueIds = duePartIdsOn(tomorrow);
   document.getElementById("kpiTmrTarget").textContent = DCL.fmtCount(dueIds.length);
@@ -166,37 +167,7 @@ function renderBlock3(tomorrow){
   const dueActions = ALL_ACTIONS.filter(a => a.due_date === tomorrow && ["OPEN","IN_PROGRESS"].includes(a.status));
   document.getElementById("kpiTmrDueAction").textContent = DCL.fmtCount(dueActions.length);
 
-  const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
-  const typeMap = Object.fromEntries(ALL_TYPES.map(t=>[t.id,t]));
-  const inspMap = Object.fromEntries(ALL_INSPECTORS.map(i=>[i.id,i]));
-  const assignByPart = {};
-  ALL_ASSIGNMENTS.forEach(a=>{ (assignByPart[a.part_id]=assignByPart[a.part_id]||[]).push(a.inspector_id); });
-
-  const partsBody = document.getElementById("tomorrowPartsBody");
-  partsBody.innerHTML = dueIds.length ? dueIds.map(id=>{
-    const p = partMap[id]; if (!p) return "";
-    const t = typeMap[p.part_type_id];
-    const names = (assignByPart[id]||[]).map(iid=>inspMap[iid]?.name).filter(Boolean);
-    const assigneeHtml = names.length ? esc(names.join(", ")) : `<span class="badge badge-red">${DCL.t("common.unassignedBadge")}</span>`;
-    return `<tr>
-      <td class="mono"><b>${esc(p.part_code)}</b></td>
-      <td>${esc(p.part_name)}</td>
-      <td class="text-mute">${esc(t?t.type_name:"-")}</td>
-      <td>${assigneeHtml}</td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="4" class="empty-state">${DCL.t("page.report.emptyList")}</td></tr>`;
-
-  const actionsBody = document.getElementById("tomorrowActionsBody");
-  actionsBody.innerHTML = dueActions.length ? dueActions.map(a=>{
-    const p = partMap[a.part_id];
-    const assigneeName = a.assignee_id ? esc(inspMap[a.assignee_id]?.name||"-") : `<span class="badge badge-red">${DCL.t("common.unassignedBadge")}</span>`;
-    return `<tr>
-      <td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td>
-      <td style="max-width:260px;">${esc(a.issue_desc)}</td>
-      <td>${SEV_BADGE[a.severity] ? SEV_BADGE[a.severity]() : "-"}</td>
-      <td>${assigneeName}</td>
-    </tr>`;
-  }).join("") : `<tr><td colspan="4" class="empty-state">${DCL.t("page.report.emptyList")}</td></tr>`;
+  STATE.tmr = { tomorrow, dueIds, dueActions };
 }
 
 // ---- KPI 타일 클릭 → 상세 목록 팝업 (대시보드 구축 원칙 - 공용 모달 재사용) ------------------
@@ -251,6 +222,43 @@ function openKpiListModal(kind){
       const p = partMap[id]; if (!p) return "";
       const names = (assignByPart[id]||[]).map(iid=>inspMap[iid]?.name).filter(Boolean).join(", ") || DCL.t("common.unassigned");
       return `<tr><td class="mono"><b>${esc(p.part_code)}</b></td><td>${esc(p.part_name)}</td><td class="text-mute">${esc(names)}</td></tr>`;
+    }).join("");
+  } else if (kind === "t_rate") {
+    title = DCL.t("page.report.todayTargetModalTitle");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.col.status")}</th></tr>`;
+    rows = STATE.t.dueIds.map(id=>{
+      const p = partMap[id]; if (!p) return "";
+      const done = STATE.t.doneIds.has(id);
+      return `<tr><td class="mono"><b>${esc(p.part_code)}</b></td><td>${esc(p.part_name)}</td><td>${done ? `<span class="badge badge-green">${DCL.t("page.inspect.doneComplete")}</span>` : `<span class="badge badge-yellow">${DCL.t("page.inspect.notDoneYet")}</span>`}</td></tr>`;
+    }).join("");
+  } else if (kind === "t_done") {
+    title = DCL.t("page.report.todayDoneModalTitle");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.inspectorLabel")}</th><th>${DCL.t("common.resultLabel")}</th></tr>`;
+    rows = STATE.t.tInspections.map(i=>{
+      const p = partMap[i.part_id];
+      const resultBadge = i.overall_result === "ABNORMAL" ? `<span class="badge badge-red">${DCL.t("result.ABNORMAL")}</span>` : `<span class="badge badge-green">${DCL.t("result.NORMAL")}</span>`;
+      return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td>${resultBadge}</td></tr>`;
+    }).join("");
+  } else if (kind === "tmr_parts") {
+    title = DCL.t("page.report.tomorrowPartsTitle");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.col.type")}</th><th>${DCL.t("common.col.assignee")}</th></tr>`;
+    const typeMap = Object.fromEntries(ALL_TYPES.map(t=>[t.id,t]));
+    const assignByPart = {};
+    ALL_ASSIGNMENTS.forEach(a=>{ (assignByPart[a.part_id]=assignByPart[a.part_id]||[]).push(a.inspector_id); });
+    rows = STATE.tmr.dueIds.map(id=>{
+      const p = partMap[id]; if (!p) return "";
+      const t = typeMap[p.part_type_id];
+      const names = (assignByPart[id]||[]).map(iid=>inspMap[iid]?.name).filter(Boolean);
+      const assigneeHtml = names.length ? esc(names.join(", ")) : `<span class="badge badge-red">${DCL.t("common.unassignedBadge")}</span>`;
+      return `<tr><td class="mono"><b>${esc(p.part_code)}</b></td><td>${esc(p.part_name)}</td><td class="text-mute">${esc(t?t.type_name:"-")}</td><td>${assigneeHtml}</td></tr>`;
+    }).join("");
+  } else if (kind === "tmr_actions") {
+    title = DCL.t("page.report.tomorrowActionsTitle");
+    head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("page.actions.colIssue")}</th><th>${DCL.t("common.severityLabel")}</th><th>${DCL.t("common.col.assignee")}</th></tr>`;
+    rows = STATE.tmr.dueActions.map(a=>{
+      const p = partMap[a.part_id];
+      const assigneeName = a.assignee_id ? esc(inspMap[a.assignee_id]?.name||"-") : `<span class="badge badge-red">${DCL.t("common.unassignedBadge")}</span>`;
+      return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:260px;">${esc(a.issue_desc)}</td><td>${SEV_BADGE[a.severity]?SEV_BADGE[a.severity]():"-"}</td><td>${assigneeName}</td></tr>`;
     }).join("");
   }
 
