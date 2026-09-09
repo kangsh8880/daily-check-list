@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title data-i18n="page.report.pageTitle">일일보고 - K1 일상점검</title>
+<link rel="stylesheet" href="css/style.css" />
+<link rel="icon" href="assets/icon-192.png" />
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-badge">K1</div><div><div class="title" data-i18n="common.brandTitle">일상점검</div></div></div>
+    <nav id="sidebarNav"></nav>
+    <div class="nav-section-label" data-i18n="common.accountLabel">계정</div>
+    <div id="sidebarWho" style="padding:0 8px 10px;"></div>
+    <div class="nav-item" id="logoutBtn"><span class="ico">↩️</span><span data-i18n="common.logout">로그아웃</span></div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div><div class="page-title" data-i18n="page.report.title">일일보고</div><div class="page-desc" data-i18n="page.report.desc">전일 점검현황 · 금일 점검계획 · 명일 준비사항을 한눈에 확인합니다</div></div>
+      <div class="topbar-right"><button class="theme-toggle" id="themeToggle">🌙</button></div>
+    </div>
+
+    <div class="content">
+
+      <!-- 조회일 -->
+      <div class="card">
+        <div class="card-head">
+          <h3 data-i18n="page.report.refDateLabel">조회일</h3>
+          <div class="flex gap-8" style="flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-sm" id="prevDayBtn" data-i18n="page.report.prevDayBtn">◀ 전일</button>
+            <input type="date" id="refDateInput" />
+            <button class="btn btn-sm" id="nextDayBtn" data-i18n="page.report.nextDayBtn">익일 ▶</button>
+            <button class="btn btn-sm btn-primary" id="todayBtn" data-i18n="page.report.todayBtn">오늘</button>
+          </div>
+        </div>
+        <div class="text-mute fs-xs" data-i18n="page.report.refDateHint">조회일을 기준으로 전일·금일·명일 현황이 함께 이동합니다</div>
+      </div>
+
+      <!-- 1. 전일 점검현황 -->
+      <div class="card">
+        <div class="card-head report-block-head">
+          <h3><span class="report-block-num">1</span><span data-i18n="page.report.block1Title">전일 점검현황</span><span class="text-mute fs-sm" id="block1DateLabel"></span></h3>
+        </div>
+        <div class="grid grid-4">
+          <div class="kpi-tile clickable" data-kpi="y_rate" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.report.kpiRate">점검율</div>
+            <div class="kpi-value unit-percent" id="kpiYRate">0.0%</div>
+            <div class="kpi-sub" id="kpiYRateSub"></div>
+          </div>
+          <div class="kpi-tile clickable" data-kpi="y_abn" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.report.kpiAbn">이상발생</div>
+            <div class="kpi-value unit-alert" id="kpiYAbn">0</div>
+          </div>
+          <div class="kpi-tile clickable" data-kpi="y_open" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.report.kpiOpenAction">미조치</div>
+            <div class="kpi-value unit-alert" id="kpiYOpen">0</div>
+          </div>
+          <div class="kpi-tile clickable" data-kpi="y_unapproved" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.report.kpiUnapproved">미승인</div>
+            <div class="kpi-value" id="kpiYUnapproved">0</div>
+          </div>
+        </div>
+        <div class="text-mute fs-xs mt-8" data-i18n="page.report.cumulativeHint">※ 미조치·미승인 건수는 조회일(전일) 이전 등록 건 중 현재 시점 기준 미해결 건입니다.</div>
+      </div>
+
+      <!-- 2. 금일 점검계획 현황 -->
+      <div class="card">
+        <div class="card-head report-block-head">
+          <h3><span class="report-block-num">2</span><span data-i18n="page.report.block2Title">금일 점검계획 현황</span><span class="text-mute fs-sm" id="block2DateLabel"></span></h3>
+        </div>
+        <div class="grid grid-4">
+          <div class="kpi-tile">
+            <div class="kpi-label" data-i18n="page.report.planTarget">점검 대상</div>
+            <div class="kpi-value" id="kpiTTarget">0</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-label" data-i18n="page.report.planDone">완료</div>
+            <div class="kpi-value" id="kpiTDone">0</div>
+          </div>
+          <div class="kpi-tile clickable" data-kpi="t_remain" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.report.planRemain">잔여(미점검)</div>
+            <div class="kpi-value unit-alert" id="kpiTRemain">0</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-label" data-i18n="page.report.planRate">진행율</div>
+            <div class="kpi-value unit-percent" id="kpiTRate">0.0%</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="card-head" style="margin-bottom:8px;">
+          <h3 style="font-size:var(--fs-sm);" data-i18n="page.report.byInspectorTitle">담당자별 진행현황</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th data-i18n="common.inspectorLabel">점검자</th>
+              <th data-i18n="page.report.colAssignedCnt">배정 건수</th>
+              <th data-i18n="page.report.colDoneCnt">완료 건수</th>
+              <th data-i18n="page.report.colRemainCnt">잔여 건수</th>
+              <th data-i18n="page.report.colProgress">진행율</th>
+            </tr></thead>
+            <tbody id="byInspectorBody"><tr><td colspan="5" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. 명일 점검계획 준비사항 -->
+      <div class="card">
+        <div class="card-head report-block-head">
+          <h3><span class="report-block-num">3</span><span data-i18n="page.report.block3Title">명일 점검계획 준비사항</span><span class="text-mute fs-sm" id="block3DateLabel"></span></h3>
+        </div>
+        <div class="grid grid-2">
+          <div class="kpi-tile">
+            <div class="kpi-label" data-i18n="page.report.tomorrowTargetLabel">명일 점검 예정</div>
+            <div class="kpi-value" id="kpiTmrTarget">0</div>
+          </div>
+          <div class="kpi-tile">
+            <div class="kpi-label" data-i18n="page.report.tomorrowDueActionLabel">명일 기한도래 조치</div>
+            <div class="kpi-value unit-alert" id="kpiTmrDueAction">0</div>
+          </div>
+        </div>
+
+        <div class="card-head" style="margin:14px 0 8px;">
+          <h3 style="font-size:var(--fs-sm);" data-i18n="page.report.tomorrowPartsTitle">명일 점검 예정 부품 목록</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th data-i18n="common.col.partCode">부품코드</th>
+              <th data-i18n="common.col.partName">부품명</th>
+              <th data-i18n="common.col.type">유형</th>
+              <th data-i18n="common.col.assignee">담당자</th>
+            </tr></thead>
+            <tbody id="tomorrowPartsBody"><tr><td colspan="4" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="card-head" style="margin:14px 0 8px;">
+          <h3 style="font-size:var(--fs-sm);" data-i18n="page.report.tomorrowActionsTitle">명일 기한도래 조치 목록</h3>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th data-i18n="common.col.part">부품</th>
+              <th data-i18n="page.actions.colIssue">이상내용</th>
+              <th data-i18n="common.severityLabel">심각도</th>
+              <th data-i18n="common.col.assignee">담당자</th>
+            </tr></thead>
+            <tbody id="tomorrowActionsBody"><tr><td colspan="4" class="empty-state" data-i18n="common.loading">불러오는 중...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- KPI 타일 클릭 시 표시되는 목록 팝업 (공용) -->
+<div class="modal-overlay" id="kpiListModalOverlay">
+  <div class="modal" style="width:680px;">
+    <div class="modal-header"><h3 id="kpiListModalTitle"></h3><div class="modal-close" onclick="DCL.closeModal('kpiListModalOverlay')">✕</div></div>
+    <div class="modal-body">
+      <div class="table-wrap"><table><thead id="kpiListModalHead"></thead><tbody id="kpiListModalBody"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/common.js"></script>
+<script src="js/report.js"></script>
+</body>
+</html>
