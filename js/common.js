@@ -255,15 +255,15 @@
   };
 
   // ---- 사용자 설명서 버튼 (topbar-right 우측 상단, HTML 수정 불필요) -----------------
-  // v1.1: 로그인~로그아웃 전체 프로세스 + 오늘 내 점검목록/KPI 클릭 팝업/KPI 디자인 개선/
-  // 점검자 이메일 항목을 반영한 Word 사용자 활용 설명서를 새 탭에서 엽니다.
+  // v1.2: AI 어시스턴트 기능 제거에 따른 관련 안내 삭제, "일일보고" 화면(12장, 관리자 전용)
+  // 신규 반영 Word 사용자 활용 설명서를 새 탭에서 엽니다.
   DCL.initUserManualButton = function(){
     const mount = document.querySelector(".topbar-right");
     if (!mount || document.getElementById("userManualBtn")) return;
     const a = document.createElement("a");
     a.id = "userManualBtn";
     a.className = "user-manual-btn no-print";
-    a.href = "manual/user-manual-v1.1.docx";
+    a.href = "manual/user-manual-v1.2.docx";
     a.target = "_blank";
     a.rel = "noopener";
     a.title = DCL.t("common.userManual");
