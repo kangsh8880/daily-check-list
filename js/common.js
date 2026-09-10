@@ -97,29 +97,38 @@
     setTimeout(()=>{ t.style.opacity = "0"; t.style.transition = "opacity .3s"; setTimeout(()=>t.remove(), 300); }, 2600);
   };
 
-  // ---- 모달 (드래그 + 리사이즈는 CSS resize:both 사용, 헤더 드래그만 JS 처리) ----
+  // ---- 모달 (드래그 + 리사이즈는 CSS resize:both 사용, 헤더 드래그는 이벤트 위임으로 전 화면 공통 처리) ----
   DCL.openModal = function(id){ const m = document.getElementById(id); if (m) m.classList.add("open"); };
-  DCL.closeModal = function(id){ const m = document.getElementById(id); if (m) m.classList.remove("open"); };
-  DCL.wireDraggableModal = function(overlaySelector){
-    document.querySelectorAll(overlaySelector + " .modal").forEach(function(modal){
-      const header = modal.querySelector(".modal-header");
-      if (!header) return;
-      let dragging = false, sx=0, sy=0, ox=0, oy=0;
-      header.addEventListener("mousedown", function(e){
-        if (e.target.closest(".modal-close")) return;
-        dragging = true; sx = e.clientX; sy = e.clientY;
-        const r = modal.getBoundingClientRect(); ox = r.left; oy = r.top;
-        modal.style.position="fixed"; modal.style.left=ox+"px"; modal.style.top=oy+"px"; modal.style.margin="0";
-        document.body.style.userSelect="none";
-      });
-      document.addEventListener("mousemove", function(e){
-        if (!dragging) return;
-        modal.style.left = (ox + (e.clientX - sx)) + "px";
-        modal.style.top = (oy + (e.clientY - sy)) + "px";
-      });
-      document.addEventListener("mouseup", function(){ dragging=false; document.body.style.userSelect=""; });
-    });
+  DCL.closeModal = function(id){
+    const overlay = document.getElementById(id);
+    if (!overlay) return;
+    overlay.classList.remove("open");
+    // 드래그로 이동했던 위치를 초기화 — 다음에 열 때는 항상 화면 중앙에서 시작
+    const modal = overlay.querySelector(".modal");
+    if (modal) { modal.style.position = ""; modal.style.left = ""; modal.style.top = ""; modal.style.margin = ""; }
   };
+  // 헤더를 마우스로 눌러 드래그하면 모달이 이동합니다. 새 모달을 추가해도 별도 초기화 호출 없이
+  // 자동으로 적용되도록 document 레벨 이벤트 위임 방식을 사용합니다.
+  (function(){
+    let dragModal = null, sx = 0, sy = 0, ox = 0, oy = 0;
+    document.addEventListener("mousedown", function(e){
+      const header = e.target.closest(".modal-overlay.open .modal-header");
+      if (!header || e.target.closest(".modal-close")) return;
+      const modal = header.closest(".modal");
+      if (!modal) return;
+      dragModal = modal;
+      sx = e.clientX; sy = e.clientY;
+      const r = modal.getBoundingClientRect(); ox = r.left; oy = r.top;
+      modal.style.position = "fixed"; modal.style.left = ox + "px"; modal.style.top = oy + "px"; modal.style.margin = "0";
+      document.body.style.userSelect = "none";
+    });
+    document.addEventListener("mousemove", function(e){
+      if (!dragModal) return;
+      dragModal.style.left = (ox + (e.clientX - sx)) + "px";
+      dragModal.style.top = (oy + (e.clientY - sy)) + "px";
+    });
+    document.addEventListener("mouseup", function(){ dragModal = null; document.body.style.userSelect = ""; });
+  })();
 
   // ---- 드롭다운 자동 첫 항목 선택 --------------------------------------------
   DCL.autoSelectFirst = function(selectEl){
