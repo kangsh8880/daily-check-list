@@ -284,7 +284,7 @@ tbody tr.row-focus-highlight{ background:var(--pastel-yellow); transition:backgr
 .modal-overlay.open{ display:flex; }
 .modal{
   background:var(--panel); border:1px solid var(--border-strong); border-radius:var(--radius);
-  box-shadow:var(--shadow-md); width:560px; max-width:92vw; max-height:88vh; min-width:320px; min-height:220px;
+  box-shadow:var(--shadow-md); width:896px; max-width:92vw; max-height:92vh; min-width:512px; min-height:352px;
   display:flex; flex-direction:column; resize:both; overflow:auto; position:relative;
 }
 .modal-header{
