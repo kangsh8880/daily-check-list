@@ -162,16 +162,6 @@ a:hover{ text-decoration:underline; }
   font-weight:800; font-size:var(--fs-sm);
 }
 
-/* "오늘 내 할 일" 카드 - 점검/조치/승인 섹션 구분 */
-.my-task-section{ margin-top:16px; }
-.my-task-section:first-child{ margin-top:0; }
-.my-task-section-head{
-  font-size:var(--fs-sm); font-weight:700; color:var(--text-mute);
-  display:flex; align-items:center; gap:8px; margin-bottom:2px;
-  padding-top:12px; border-top:1px solid var(--border);
-}
-.my-task-section:first-child .my-task-section-head{ padding-top:0; border-top:none; }
-
 /* 문의사항 상세 - 답변 목록 */
 .inquiry-reply{
   border:1px solid var(--border); border-radius:8px;
