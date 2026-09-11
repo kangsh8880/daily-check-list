@@ -177,7 +177,7 @@ function wireKpiTileClicks(){
   });
 }
 
-function openKpiListModal(kind){
+async function openKpiListModal(kind){
   const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
   const inspMap = Object.fromEntries(ALL_INSPECTORS.map(i=>[i.id,i]));
   let title = "", head = "", rows = "";
@@ -193,9 +193,19 @@ function openKpiListModal(kind){
   } else if (kind === "y_abn") {
     title = DCL.t("page.report.abnModalTitle");
     head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.inspectorLabel")}</th><th>${DCL.t("common.col.note")}</th></tr>`;
+    const abnIds = STATE.y.abnList.map(i=>i.id);
+    // 비고란: 점검 메모(note, 대부분 미입력)가 아니라 실제로 "이상"으로 판정된 점검항목명과 측정값을 표시
+    const abnResults = abnIds.length
+      ? await DCL.select("inspection_results", q => q.in("inspection_id", abnIds).eq("judge_result", "ABNORMAL"))
+      : [];
+    const resultsByInspection = {};
+    abnResults.forEach(r=>{ (resultsByInspection[r.inspection_id]=resultsByInspection[r.inspection_id]||[]).push(r); });
     rows = STATE.y.abnList.map(i=>{
       const p = partMap[i.part_id];
-      return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td class="text-mute">${esc(i.note||"-")}</td></tr>`;
+      const items = (resultsByInspection[i.id]||[])
+        .map(r=>`${esc(r.item_name)}: ${esc(r.input_value ?? "-")}`)
+        .join(", ");
+      return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td class="text-mute" style="max-width:260px;">${items || "-"}</td></tr>`;
     }).join("");
   } else if (kind === "y_open") {
     title = DCL.t("page.report.openActionModalTitle");

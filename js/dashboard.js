@@ -287,7 +287,7 @@ function wireKpiTileClicks(){
   });
 }
 
-function openKpiListModal(kind){
+async function openKpiListModal(kind){
   const today = DCL.today();
   const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
   const inspMap = Object.fromEntries(ALL_INSPECTORS.map(i=>[i.id,i]));
@@ -320,9 +320,20 @@ function openKpiListModal(kind){
   } else if (kind === "abn") {
     title = DCL.t("page.dashboard.kpiModal.abnTitle");
     head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.col.assignee")}</th><th>${DCL.t("common.col.note")}</th></tr>`;
-    rows = ALL_INSPECTIONS.filter(i=>i.inspect_date===today && i.overall_result==="ABNORMAL").map(i=>{
+    const abnInspections = ALL_INSPECTIONS.filter(i=>i.inspect_date===today && i.overall_result==="ABNORMAL");
+    const abnIds = abnInspections.map(i=>i.id);
+    // 비고란: 점검 메모(note, 대부분 미입력)가 아니라 실제로 "이상"으로 판정된 점검항목명과 측정값을 표시
+    const abnResults = abnIds.length
+      ? await DCL.select("inspection_results", q => q.in("inspection_id", abnIds).eq("judge_result", "ABNORMAL"))
+      : [];
+    const resultsByInspection = {};
+    abnResults.forEach(r=>{ (resultsByInspection[r.inspection_id]=resultsByInspection[r.inspection_id]||[]).push(r); });
+    rows = abnInspections.map(i=>{
       const p = partMap[i.part_id];
-      return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td class="text-mute">${esc(i.note||"-")}</td></tr>`;
+      const items = (resultsByInspection[i.id]||[])
+        .map(r=>`${esc(r.item_name)}: ${esc(r.input_value ?? "-")}`)
+        .join(", ");
+      return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td class="text-mute" style="max-width:260px;">${items || "-"}</td></tr>`;
     }).join("");
     emptyKey = "page.dashboard.kpiModal.abnEmpty";
   } else if (kind === "action") {
