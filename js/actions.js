@@ -40,10 +40,12 @@ function renderKpis(){
   const open = ALL_ACTIONS.filter(a=>a.status==="OPEN").length;
   const prog = ALL_ACTIONS.filter(a=>a.status==="IN_PROGRESS").length;
   const done = ALL_ACTIONS.filter(a=>a.status==="DONE").length;
+  const rejected = ALL_ACTIONS.filter(a=>a.status==="REJECTED").length;
   const overdue = ALL_ACTIONS.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today).length;
   document.getElementById("kpiOpen").textContent = DCL.fmtCount(open);
   document.getElementById("kpiProgress").textContent = DCL.fmtCount(prog);
   document.getElementById("kpiDone").textContent = DCL.fmtCount(done);
+  document.getElementById("kpiRejected").textContent = DCL.fmtCount(rejected);
   document.getElementById("kpiOverdue").textContent = DCL.fmtCount(overdue);
 }
 
@@ -115,6 +117,7 @@ function openKpiListModal(kind){
     OPEN: "page.actions.kpiOpen",
     IN_PROGRESS: "page.actions.kpiProgress",
     DONE: "page.actions.kpiDone",
+    REJECTED: "page.actions.kpiRejected",
     OVERDUE: "page.actions.kpiOverdue"
   }[kind];
 
