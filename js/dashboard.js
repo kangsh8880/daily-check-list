@@ -210,7 +210,7 @@ function renderTrends(){
   }
   const days = Number(document.getElementById("periodFilter").value || 7);
   const labels = [];
-  const rateData = [], abnData = [], actionData = [];
+  const rateData = [], abnData = [], actionData = [], actionCountData = [];
 
   for (let i=days-1; i>=0; i--){
     const d = new Date(); d.setDate(d.getDate()-i);
@@ -229,6 +229,9 @@ function renderTrends(){
     const dayActions = ALL_ACTIONS.filter(a => (a.created_at||"").slice(0,10) === dStr);
     const dayApproved = dayActions.filter(a=>a.status==="APPROVED").length;
     actionData.push(dayActions.length ? Math.round(dayApproved/dayActions.length*1000)/10 : 0);
+    // 조치 이행율 0%가 "조치 대상이 없어서 0%"인지 "조치 대상은 있는데 승인이 안 돼서 0%"인지
+    // 구분할 수 있도록, 해당일 조치 건수(분모)를 별도 계열로 함께 표시한다.
+    actionCountData.push(dayActions.length);
   }
 
   const pastel = { blue:"#3E6FB0", blueBg:"rgba(214,228,240,0.55)", red:"#C94F4F", redBg:"rgba(246,220,220,0.6)", green:"#3E9A5D", greenBg:"rgba(220,239,225,0.6)" };
@@ -251,11 +254,24 @@ function renderTrends(){
     options: Object.assign({}, commonOpt, { scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:"rgba(150,150,150,0.15)" } }, x:{ grid:{ display:false } } } })
   });
 
+  // 조치 이행율(선, 좌측축 %) + 조치 건수(막대, 우측축 건) 이중축 차트.
+  // 이행율만 보면 0%가 "조치 대상이 없어서 0%"인지 "대상은 있는데 승인이 안 돼서 0%"인지
+  // 구분되지 않는 문제가 있어, 해당일 조치 건수(분모)를 함께 표시해 근본원인을 즉시 구분할 수 있게 한다.
   ACTION_CHART && ACTION_CHART.destroy();
   ACTION_CHART = new Chart(document.getElementById("actionChart"), {
-    type:"line",
-    data:{ labels, datasets:[{ label:KPI_NAMES.action, data:actionData, borderColor:pastel.green, backgroundColor:pastel.greenBg, fill:true, tension:.3, pointRadius:2 }] },
-    options: Object.assign({}, commonOpt, { scales:{ y:{ beginAtZero:true, max:100, ticks:{ callback:v=>v+"%" } }, x:{ grid:{display:false} } } })
+    data:{ labels, datasets:[
+      { type:"bar", label:DCL.t("page.dashboard.actionCountLabel"), data:actionCountData, backgroundColor:"rgba(150,150,150,0.22)", borderColor:"rgba(120,120,120,0.55)", borderWidth:1, borderRadius:3, yAxisID:"y1", order:2 },
+      { type:"line", label:KPI_NAMES.action, data:actionData, borderColor:pastel.green, backgroundColor:pastel.greenBg, fill:true, tension:.3, pointRadius:2, yAxisID:"y", order:1 }
+    ]},
+    options: Object.assign({}, commonOpt, {
+      plugins:{ legend:{ display:true, position:"bottom", labels:{ boxWidth:10, font:{ size:10 } } } },
+      scales:{
+        y:{ beginAtZero:true, max:100, position:"left", ticks:{ callback:v=>v+"%" }, grid:{ color:"rgba(150,150,150,0.15)" } },
+        // 조치 건수는 인원(명)과 동일하게 항상 정수이므로 우측축도 정수 눈금만 표시
+        y1:{ beginAtZero:true, position:"right", ticks:{ precision:0 }, grid:{ drawOnChartArea:false } },
+        x:{ grid:{ display:false } }
+      }
+    })
   });
 }
 
