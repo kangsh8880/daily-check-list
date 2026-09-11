@@ -178,6 +178,14 @@ a:hover{ text-decoration:underline; }
 /* 대시보드 추이 차트 3종을 한 줄(grid-3)에 배치할 때, 개별 카드 테두리 없이 제목만 표시 */
 .trend-chart-title{ margin:0 0 8px; font-size:var(--fs-sm); font-weight:700; color:var(--text); }
 
+/* CSS Grid 아이템의 기본 min-width는 auto(내용물의 최소 크기)라서, grid 안에 표(.table-wrap)가
+   들어가면 표의 min-width(아래 @media 640px 강제값)만큼 grid item 자체가 넓어져 버리고, 정작
+   .table-wrap 내부에서는 넘치는 부분이 없어(overflow-x:auto가 있어도 발동 안 함) 좌우 스크롤이
+   불가능해진다 — 대신 body 전체가 넓어지지만 overflow-x:hidden에 가려 아예 접근 불가능한 콘텐츠가
+   된다(대시보드 "금일 미점검 부품"/"기한초과 조치"처럼 grid-2 안에 표가 있는 카드에서 실제 발생).
+   grid item에 min-width:0을 줘 내용물 크기에 상관없이 트랙 폭에 맞춰 줄어들도록 강제하면, 넘치는
+   부분의 스크롤 책임이 다시 안쪽 .table-wrap으로 돌아와 다른 화면의 표와 동일하게 좌우 스크롤된다. */
+.grid > *{ min-width:0; }
 .grid{ display:grid; gap:14px; }
 .grid-2{ grid-template-columns:repeat(2,1fr); }
 .grid-3{ grid-template-columns:repeat(3,1fr); }
