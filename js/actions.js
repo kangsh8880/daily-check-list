@@ -61,7 +61,11 @@ function renderTable(){
 
   let list = ALL_ACTIONS.slice();
   // "기한초과"는 실제 status 컬럼 값이 아니라 계산된 값이므로 별도로 필터링한다.
+  // "ACTIVE"(기본값)는 승인완료(APPROVED) 건만 제외한 처리 필요 목록 - 승인완료 이력은
+  // 점검 이력 조회 화면에서 확인 가능하므로 여기서는 기본적으로 숨긴다. 반려(REJECTED)는
+  // 재조치가 필요한 미해결 상태이므로 계속 포함한다.
   if (status === "OVERDUE") list = list.filter(a=>isOverdue(a, today));
+  else if (status === "ACTIVE") list = list.filter(a=>a.status !== "APPROVED");
   else if (status) list = list.filter(a=>a.status===status);
 
   const body = document.getElementById("actionsBody");
