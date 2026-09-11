@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", async function(){
 
   await loadAll();
   renderTodayKpis();
-  renderMyTodayList();
+  renderMyTaskKpis();
   renderTrends();
   wireKpiTileClicks();
 });
@@ -141,85 +141,61 @@ function renderTodayKpis(){
   };
 }
 
-// ---- 개인별 오늘 할 일 (로그인한 본인의 점검/조치/승인 대상을 모두 모아서 표시, 필터 미적용) ----
-// 대시보드 구축 원칙: 로그인한 인원이 오늘 처리해야 할 업무(점검/조치/승인)를 모두 한 곳에서
-// 확인할 수 있어야 한다. 승인 섹션은 관리자(admin) 역할에게만 노출한다 (조치 승인/반려는
-// 관리자 권한 전용 - 10장 점검자 관리 참고).
-function renderMyTodayList(){
-  const mount = document.getElementById("myTodayList");
-  if (!mount) return;
+// ---- 개인별 오늘 할 일 (로그인한 본인의 점검/조치/승인 대상 건수를 KPI박스로 표시, 필터 미적용) ----
+// 대시보드 구축 원칙: KPI 카드는 반드시 클릭 가능해야 하며, 클릭 시 상세 목록이 모달 팝업으로
+// 표시되어야 한다 - 상단 4개 KPI와 동일한 패턴을 여기에도 적용한다(목록은 openKpiListModal에서 조회).
+// 승인 박스는 관리자(admin) 역할에게만 노출한다 (조치 승인/반려는 관리자 권한 전용).
+function myTaskCounts(){
+  const insp = DCL.getCurrentInspector();
+  const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
+  const today = DCL.today();
+  const myPartIds = ALL_ASSIGNMENTS.filter(a=>a.inspector_id===insp.id).map(a=>a.part_id);
+  const myDueIds = myPartIds.filter(id => partMap[id] && DCL.isDueOn(partMap[id], today));
+  const myOpenActions = ALL_ACTIONS.filter(a => a.assignee_id === insp.id && ["OPEN","IN_PROGRESS"].includes(a.status));
+  const isAdmin = insp.role === "admin";
+  const myApprovals = isAdmin ? ALL_ACTIONS.filter(a => a.status === "DONE") : [];
+  return { insp, isAdmin, myDueIds, myOpenActions, myApprovals };
+}
+
+function renderMyTaskKpis(){
   const insp = DCL.getCurrentInspector();
   const titleEl = document.getElementById("myTodayTitle");
   if (titleEl) titleEl.textContent = DCL.t("page.dashboard.myListTitle", { name: insp.name });
   const hintEl = document.querySelector('[data-i18n="page.dashboard.myListHint"]');
   if (hintEl) hintEl.textContent = DCL.t("page.dashboard.myListHint");
 
-  const partMap = Object.fromEntries(ALL_PARTS.map(p=>[p.id,p]));
-  const today = DCL.today();
+  const { isAdmin, myDueIds, myOpenActions, myApprovals } = myTaskCounts();
+  document.getElementById("kpiMyInspect").textContent = DCL.fmtCount(myDueIds.length);
+  document.getElementById("kpiMyAction").textContent = DCL.fmtCount(myOpenActions.length);
 
-  // 1) 점검할 대상 - 오늘 점검주기 대상으로 본인에게 배정된 부품
-  const myPartIds = ALL_ASSIGNMENTS.filter(a=>a.inspector_id===insp.id).map(a=>a.part_id);
-  const myDueIds = myPartIds.filter(id => partMap[id] && DCL.isDueOn(partMap[id], today));
-  const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
-
-  const inspectRows = myDueIds.map(id=>{
-    const p = partMap[id];
-    const done = doneIdsToday.has(id);
-    return `<div class="flex-between" style="padding:9px 0; border-bottom:1px solid var(--border);">
-      <div>
-        <div style="font-weight:700;">${esc(p.part_name)}</div>
-        <div class="text-mute mono fs-xs">${esc(p.part_code)}</div>
-      </div>
-      <div style="text-align:right;">
-        ${done ? `<span class="badge badge-green">${DCL.t("page.inspect.doneComplete")}</span>` : `<span class="badge badge-yellow">${DCL.t("page.inspect.notDoneYet")}</span>`}
-        <a class="btn btn-sm" style="display:block; margin-top:6px; text-align:center;" href="inspect.html?code=${encodeURIComponent(p.part_code)}">${DCL.t("page.inspect.inspectBtn")}</a>
-      </div>
-    </div>`;
-  }).join("");
-
-  // 2) 조치해야 할 대상 - 본인이 담당자로 지정된 대기/조치중 상태 조치
-  const myOpenActions = ALL_ACTIONS.filter(a => a.assignee_id === insp.id && ["OPEN","IN_PROGRESS"].includes(a.status));
-  const actionRows = myOpenActions.map(a => actionTaskRowHtml(a, partMap, DCL.t("page.dashboard.myTasks.actionBtn"))).join("");
-
-  // 3) 승인해야 할 대상 - 완료등록(DONE) 후 승인 대기 중인 조치 (관리자만)
-  const isAdmin = insp.role === "admin";
-  const myApprovals = isAdmin ? ALL_ACTIONS.filter(a => a.status === "DONE") : [];
-  const approveRows = myApprovals.map(a => actionTaskRowHtml(a, partMap, DCL.t("page.dashboard.myTasks.approveBtn"))).join("");
-
-  if (!myDueIds.length && !myOpenActions.length && !myApprovals.length) {
-    mount.innerHTML = `<div class="empty-state">${DCL.t("page.dashboard.myListEmpty")}</div>`;
-    return;
+  // 승인 박스는 관리자만 노출 (비관리자는 박스 자체를 숨기고 3열 → 2열 그리드로 전환)
+  const approveTile = document.getElementById("kpiMyApproveTile");
+  const grid = document.getElementById("myTaskGrid");
+  if (approveTile){
+    approveTile.style.display = isAdmin ? "" : "none";
+    document.getElementById("kpiMyApprove").textContent = DCL.fmtCount(myApprovals.length);
   }
-
-  const section = (headerKey, countN, rowsHtml, emptyKey) => `
-    <div class="my-task-section">
-      <div class="my-task-section-head">${DCL.t(headerKey)} <span class="badge badge-gray">${DCL.fmtCount(countN)}</span></div>
-      ${rowsHtml || `<div class="empty-state" style="padding:10px 0;">${DCL.t(emptyKey)}</div>`}
-    </div>`;
-
-  mount.innerHTML = [
-    section("page.dashboard.myTasks.inspectHeader", myDueIds.length, inspectRows, "page.dashboard.myListEmpty"),
-    section("page.dashboard.myTasks.actionHeader", myOpenActions.length, actionRows, "page.dashboard.myTasks.actionEmpty"),
-    isAdmin ? section("page.dashboard.myTasks.approveHeader", myApprovals.length, approveRows, "page.dashboard.myTasks.approveEmpty") : "",
-  ].join("");
+  if (grid) grid.className = "grid " + (isAdmin ? "grid-3" : "grid-2");
 }
 
-// 조치/승인 항목 공용 행 렌더 - 부품명/코드, 이상내용, 상태 배지, 기한, 이동 버튼(actions.html?focus=<id>)
-function actionTaskRowHtml(a, partMap, btnLabel){
+// 점검/조치/승인 대상 공용 모달 행 렌더 - 부품명/코드, (이상내용/상태/기한), 처리 버튼(기존 페이지로 이동)
+function myTaskModalRow(kind, a, partMap){
+  if (kind === "myInspect") {
+    const p = a; // a는 part 레코드
+    const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===DCL.today()).map(i=>i.part_id));
+    const done = doneIdsToday.has(p.id);
+    return `<tr><td class="mono"><b>${esc(p.part_code)}</b></td><td>${esc(p.part_name)}</td>
+      <td>${done ? `<span class="badge badge-green">${DCL.t("page.inspect.doneComplete")}</span>` : `<span class="badge badge-yellow">${DCL.t("page.inspect.notDoneYet")}</span>`}</td>
+      <td><a class="btn btn-sm" href="inspect.html?code=${encodeURIComponent(p.part_code)}">${DCL.t("page.inspect.inspectBtn")}</a></td></tr>`;
+  }
   const p = partMap[a.part_id] || {};
   const statusBadge = { OPEN:"badge-red", IN_PROGRESS:"badge-yellow", DONE:"badge-blue" }[a.status] || "badge-gray";
-  return `<div class="flex-between" style="padding:9px 0; border-bottom:1px solid var(--border);">
-    <div>
-      <div style="font-weight:700;">${esc(p.part_name||"-")}</div>
-      <div class="text-mute mono fs-xs">${esc(p.part_code||"-")}</div>
-      <div class="text-mute fs-xs" style="margin-top:2px; max-width:280px;">${esc(a.issue_desc||"-")}</div>
-    </div>
-    <div style="text-align:right;">
-      <span class="badge ${statusBadge}">${DCL.t("status."+a.status)}</span>
-      ${a.due_date ? `<div class="text-mute fs-xs" style="margin-top:4px;">${DCL.t("common.col.dueDate")}: ${DCL.fmtDate(a.due_date)}</div>` : ""}
-      <a class="btn btn-sm" style="display:block; margin-top:6px; text-align:center;" href="actions.html?focus=${encodeURIComponent(a.id)}">${btnLabel}</a>
-    </div>
-  </div>`;
+  const btnLabel = DCL.t(kind === "myApprove" ? "page.dashboard.myTasks.approveBtn" : "page.dashboard.myTasks.actionBtn");
+  return `<tr><td><b>${p.part_name?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p.part_code?esc(p.part_code):""}</div></td>
+    <td style="max-width:220px;">${esc(a.issue_desc||"-")}</td>
+    <td><span class="badge ${statusBadge}">${DCL.t("status."+a.status)}</span></td>
+    <td>${a.due_date ? DCL.fmtDate(a.due_date) : "-"}</td>
+    <td><a class="btn btn-sm" href="actions.html?focus=${encodeURIComponent(a.id)}">${btnLabel}</a></td></tr>`;
 }
 
 // ---- 추이 차트 (기간 필터 적용) ------------------------------------------------
@@ -347,11 +323,32 @@ async function openKpiListModal(kind){
       return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td><span class="badge ${statusBadge[a.status]||'badge-gray'}">${DCL.t("status."+a.status)}</span></td><td>${DCL.fmtDate(a.due_date)}</td></tr>`;
     }).join("");
     emptyKey = "page.dashboard.kpiModal.actionEmpty";
+  } else if (kind === "myInspect") {
+    // 개인별 오늘 할 일 - 점검할 항목: 오늘 점검주기 대상으로 본인에게 배정된 부품 (대시보드 구축 원칙:
+    // KPI박스 클릭 → 목록 팝업 → 목록에서 항목 클릭 → 처리 페이지(inspect.html)로 이동)
+    title = DCL.t("page.dashboard.myTasks.inspectHeader");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.col.status")}</th><th></th></tr>`;
+    const { myDueIds } = myTaskCounts();
+    rows = myDueIds.map(id => partMap[id] ? myTaskModalRow("myInspect", partMap[id], partMap) : "").join("");
+    emptyKey = "page.dashboard.myListEmpty";
+  } else if (kind === "myAction") {
+    title = DCL.t("page.dashboard.myTasks.actionHeader");
+    head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.status")}</th><th>${DCL.t("common.col.dueDate")}</th><th></th></tr>`;
+    const { myOpenActions } = myTaskCounts();
+    rows = myOpenActions.map(a => myTaskModalRow("myAction", a, partMap)).join("");
+    emptyKey = "page.dashboard.myTasks.actionEmpty";
+  } else if (kind === "myApprove") {
+    title = DCL.t("page.dashboard.myTasks.approveHeader");
+    head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.status")}</th><th>${DCL.t("common.col.dueDate")}</th><th></th></tr>`;
+    const { myApprovals } = myTaskCounts();
+    rows = myApprovals.map(a => myTaskModalRow("myApprove", a, partMap)).join("");
+    emptyKey = "page.dashboard.myTasks.approveEmpty";
   }
 
+  const cols = (head.match(/<th/g) || []).length || 4;
   document.getElementById("kpiListModalTitle").textContent = title;
   document.getElementById("kpiListModalHead").innerHTML = head;
-  document.getElementById("kpiListModalBody").innerHTML = rows || `<tr><td colspan="4" class="empty-state">${DCL.t(emptyKey)}</td></tr>`;
+  document.getElementById("kpiListModalBody").innerHTML = rows || `<tr><td colspan="${cols}" class="empty-state">${DCL.t(emptyKey)}</td></tr>`;
   DCL.openModal("kpiListModalOverlay");
 }
 
