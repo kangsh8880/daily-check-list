@@ -36,6 +36,7 @@
           <h3 data-i18n="page.actions.listTitle">조치 목록</h3>
           <div class="flex gap-8">
             <select id="filterStatus">
+              <option value="ACTIVE" data-i18n="page.actions.filterActive">처리 필요(승인완료 제외)</option>
               <option value="" data-i18n="common.status.all">전체 상태</option>
               <option value="OPEN" data-i18n="status.OPEN">대기</option>
               <option value="IN_PROGRESS" data-i18n="status.IN_PROGRESS">조치중</option>
@@ -46,6 +47,7 @@
             </select>
           </div>
         </div>
+        <div class="text-mute fs-xs" style="margin:-4px 0 12px;" data-i18n="page.actions.activeHint">※ 기본적으로 승인완료 건은 목록에서 제외됩니다. 승인완료 건은 "전체 상태"를 선택하거나 점검 이력 조회 화면에서 확인할 수 있습니다.</div>
         <div class="table-wrap">
           <table>
             <thead><tr><th data-i18n="common.col.part">부품</th><th data-i18n="page.actions.colIssue">이상내용</th><th data-i18n="page.actions.colSeverity">심각도</th><th data-i18n="common.col.assignee">담당자</th><th data-i18n="common.col.dueDate">기한</th><th data-i18n="common.col.status">상태</th><th style="width:220px;" data-i18n="page.actions.colProcess">처리</th></tr></thead>
