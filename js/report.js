@@ -118,15 +118,21 @@ function renderBlock2(today){
   const dueIds = duePartIdsOn(today);
   const tInspections = RANGE_INSPECTIONS.filter(i=>i.inspect_date===today);
   const doneIds = new Set(tInspections.map(i=>i.part_id));
+  // doneCnt: "점검 대상" 중 오늘 1건 이상 점검된 부품 수(중복 제거) - 잔여/진행율 산정 기준
   const doneCnt = dueIds.filter(id=>doneIds.has(id)).length;
   const targetCnt = dueIds.length;
   const remainCnt = targetCnt - doneCnt;
   const rate = targetCnt ? (doneCnt/targetCnt*100) : 0;
   const tAbnList = tInspections.filter(i=>i.overall_result==="ABNORMAL");
+  // execCnt: "완료" 타일에 표시할 값 - 동일 부품을 여러 번 점검한 경우도 모두 포함한
+  // 오늘 실제로 수행된 점검 건수(실행 횟수) 그대로 카운트. 잔여(미점검)/진행율은 위 doneCnt(중복 제거)
+  // 기준을 그대로 쓰므로, 완료 건수가 점검 대상보다 많아지는 경우가 있어도 잔여/진행율로 실제 미점검
+  // 여부를 확인할 수 있어 숫자 해석에 혼선이 없다.
+  const execCnt = tInspections.length;
 
   document.getElementById("kpiTRate").textContent = DCL.fmtPercent(rate);
   document.getElementById("kpiTTarget").textContent = DCL.fmtCount(targetCnt);
-  document.getElementById("kpiTDone").textContent = DCL.fmtCount(doneCnt);
+  document.getElementById("kpiTDone").textContent = DCL.fmtCount(execCnt);
   document.getElementById("kpiTRemain").textContent = DCL.fmtCount(remainCnt);
   document.getElementById("kpiTAbn").textContent = DCL.fmtCount(tAbnList.length);
 
