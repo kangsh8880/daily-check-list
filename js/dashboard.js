@@ -156,26 +156,31 @@ function myTaskCounts(){
   const isAdmin = insp.role === "admin";
   const myApprovals = isAdmin ? ALL_ACTIONS.filter(a => a.status === "DONE") : [];
 
-  // KPI박스 표시용 "실행한 건수 / 전체 건수" 계산. 조치/승인 박스의 팝업 목록(myOpenActions/myApprovals)은
-  // "아직 처리 안 한 것"만 담고 있어 그 안에서는 분자가 항상 0이 되어 의미가 없으므로, 전체 건수는
-  // 완료된 것까지 포함하도록 별도로 다시 집계한다(팝업 목록 자체는 그대로 유지 - 처리 대상만 보여줘야 함).
+  // KPI박스 표시용 "실행한 건수 / 전체 건수" 계산.
+  // - 점검할 항목: 분모 = 오늘 배정된 점검 대상 전체, 분자 = 그 중 이미 점검 완료한 건수.
   const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
   const myInspectDoneCnt = myDueIds.filter(id=>doneIdsToday.has(id)).length;
   const myInspectTotalCnt = myDueIds.length;
 
-  const myActionAll = ALL_ACTIONS.filter(a => a.assignee_id === insp.id);
-  const myActionDoneCnt = myActionAll.filter(a => !["OPEN","IN_PROGRESS"].includes(a.status)).length;
-  const myActionTotalCnt = myActionAll.length;
+  // - 조치할 항목: 분모 = 현재 나에게 배정된 미해결(OPEN/IN_PROGRESS) 조치 전체 건수(스냅샷, myOpenActions와 동일 기준).
+  //   분자 = 오늘 내가 실제로 "조치완료 등록"한 건수. actions.completed_by/completed_at(fn_complete_action이
+  //   기록)을 사용 - 오늘 등록한 건은 등록 즉시 상태가 DONE으로 바뀌어 위 분모(OPEN/IN_PROGRESS) 목록에서는
+  //   빠지므로, 분모와 분자를 서로 다른 조건으로 각각 집계해야 "오늘 몇 건을 처리했는지"가 드러난다.
+  const myActionTotalCnt = myOpenActions.length;
+  const myActionDoneTodayCnt = ALL_ACTIONS.filter(a => a.completed_by === insp.id && (a.completed_at||"").slice(0,10) === today).length;
 
-  // 승인은 "누가 승인했는지" 기록하는 담당자 필드가 없어 개인별 실행 건수를 특정할 수 없으므로,
-  // 조직 전체 기준으로 승인 프로세스(DONE 이상 도달)에 들어온 건수 대비 이미 처리(승인/반려)된 건수를 보여준다.
-  const approveAll = isAdmin ? ALL_ACTIONS.filter(a => ["DONE","APPROVED","REJECTED"].includes(a.status)) : [];
-  const myApproveDoneCnt = approveAll.filter(a => ["APPROVED","REJECTED"].includes(a.status)).length;
-  const myApproveTotalCnt = approveAll.length;
+  // - 승인할 항목: 조치 승인/반려는 관리자 공통 권한이라(누가 처리하든 전사 동일 목록) 분모·분자 모두 전사
+  //   기준으로 집계한다. 분모 = 현재 미승인(DONE) 상태로 남아있는 전체 건수(myApprovals와 동일 기준).
+  //   분자 = 오늘 실제로 승인 또는 반려 처리된 건수. actions.approved_at(fn_review_action이 승인/반려
+  //   공통으로 기록)을 사용한다.
+  const myApproveTotalCnt = myApprovals.length;
+  const myApproveDoneTodayCnt = isAdmin
+    ? ALL_ACTIONS.filter(a => ["APPROVED","REJECTED"].includes(a.status) && (a.approved_at||"").slice(0,10) === today).length
+    : 0;
 
   return {
     insp, isAdmin, myDueIds, myOpenActions, myApprovals,
-    myInspectDoneCnt, myInspectTotalCnt, myActionDoneCnt, myActionTotalCnt, myApproveDoneCnt, myApproveTotalCnt
+    myInspectDoneCnt, myInspectTotalCnt, myActionDoneTodayCnt, myActionTotalCnt, myApproveDoneTodayCnt, myApproveTotalCnt
   };
 }
 
@@ -186,17 +191,19 @@ function renderMyTaskKpis(){
   const hintEl = document.querySelector('[data-i18n="page.dashboard.myListHint"]');
   if (hintEl) hintEl.textContent = DCL.t("page.dashboard.myListHint");
 
-  const { isAdmin, myInspectDoneCnt, myInspectTotalCnt, myActionDoneCnt, myActionTotalCnt, myApproveDoneCnt, myApproveTotalCnt } = myTaskCounts();
-  // "실행한 건수 / 전체 건수" 형태로 표시 (예: 오늘 배정 4건 중 아직 아무것도 안 했으면 "0 / 4")
+  const { isAdmin, myInspectDoneCnt, myInspectTotalCnt, myActionDoneTodayCnt, myActionTotalCnt, myApproveDoneTodayCnt, myApproveTotalCnt } = myTaskCounts();
+  // 점검할 항목: "완료 / 오늘 배정된 전체" (예: 오늘 배정 4건 중 아직 아무것도 안 했으면 "0 / 4")
   document.getElementById("kpiMyInspect").textContent = `${DCL.fmtCount(myInspectDoneCnt)} / ${DCL.fmtCount(myInspectTotalCnt)}`;
-  document.getElementById("kpiMyAction").textContent = `${DCL.fmtCount(myActionDoneCnt)} / ${DCL.fmtCount(myActionTotalCnt)}`;
+  // 조치할 항목: "오늘 처리한 건수 / 현재 미해결 전체(나에게 배정된 것)"
+  document.getElementById("kpiMyAction").textContent = `${DCL.fmtCount(myActionDoneTodayCnt)} / ${DCL.fmtCount(myActionTotalCnt)}`;
 
   // 승인 박스는 관리자만 노출 (비관리자는 박스 자체를 숨기고 3열 → 2열 그리드로 전환)
   const approveTile = document.getElementById("kpiMyApproveTile");
   const grid = document.getElementById("myTaskGrid");
   if (approveTile){
     approveTile.style.display = isAdmin ? "" : "none";
-    document.getElementById("kpiMyApprove").textContent = `${DCL.fmtCount(myApproveDoneCnt)} / ${DCL.fmtCount(myApproveTotalCnt)}`;
+    // 승인할 항목: "오늘 처리(승인+반려)한 건수 / 현재 미승인 전체(전사)"
+    document.getElementById("kpiMyApprove").textContent = `${DCL.fmtCount(myApproveDoneTodayCnt)} / ${DCL.fmtCount(myApproveTotalCnt)}`;
   }
   if (grid) grid.className = "grid " + (isAdmin ? "grid-3" : "grid-2");
 }
