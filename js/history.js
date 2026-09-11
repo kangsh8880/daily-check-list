@@ -149,6 +149,13 @@ async function showDetail(id){
     DCL.select("inspection_results", q => q.eq("inspection_id", id)),
     DCL.select("actions", q => q.eq("inspection_id", id))
   ]);
+  // 반려→재배정처럼 같은 조치가 여러 사이클을 거쳤을 때, actions의 "현재 상태" 필드만으로는
+  // 지난 이력(과거에 반려됐었는지 등)이 보이지 않으므로 action_history(migration_007)를
+  // 별도로 조회해 조치별 처리 타임라인을 함께 보여준다.
+  const actionIds = actions.map(a=>a.id);
+  const historyRows = actionIds.length ? await DCL.select("action_history", q => q.in("action_id", actionIds)) : [];
+  const historyByAction = {};
+  historyRows.forEach(h => { (historyByAction[h.action_id] = historyByAction[h.action_id] || []).push(h); });
 
   const resultRows = results.map(r=>{
     const badge = r.judge_result === "ABNORMAL" ? `<span class="badge badge-red">${DCL.t("result.ABNORMAL")}</span>` : `<span class="badge badge-green">${DCL.t("result.NORMAL")}</span>`;
@@ -166,17 +173,27 @@ async function showDetail(id){
     const assigneeName = a.assignee_id ? esc(inspMap[a.assignee_id]?.name || "-") : esc(insp?.name || DCL.t("common.unassigned"));
     const completedByName = a.completed_by ? esc(inspMap[a.completed_by]?.name || "-") : "";
     const approvedByName = a.approved_by ? esc(inspMap[a.approved_by]?.name || "-") : "";
+    // 반려 후 재배정되면 같은 행의 completed_by/approved_by 등은 "다음 완료/승인" 전까지
+    // 지난 사이클 값이 그대로 남아있는 낡은(stale) 값이 된다. 현재 상태 요약 칸에는 그
+    // 값이 실제로 지금 상태와 일치하는 상태(완료/승인/반려 이후)일 때만 보여주고, 재배정으로
+    // 되돌아간(OPEN/IN_PROGRESS) 상태에서는 감춰 오해를 막는다 - 지난 이력은 아래 타임라인에서 확인.
+    const showCompleted = ["DONE","APPROVED","REJECTED"].includes(a.status);
+    const showApproved = ["APPROVED","REJECTED"].includes(a.status);
 
     let fields = `<div>${DCL.t("common.col.actionAssignee")}: <b>${assigneeName}</b></div>`;
     if (a.due_date) fields += `<div>${DCL.t("common.col.dueDate")}: ${DCL.fmtDate(a.due_date)}</div>`;
-    if (a.completed_by) fields += `<div>${DCL.t("page.history.completedByLabel")}: <b>${completedByName}</b> (${DCL.fmtDateTime(a.completed_at)})</div>`;
-    if (a.action_taken) fields += `<div>${DCL.t("page.actions.actionTakenViewLabel")}: ${esc(a.action_taken)}</div>`;
-    if (a.approved_by) fields += `<div>${DCL.t("page.history.approvedByLabel")}: <b>${approvedByName}</b> (${DCL.fmtDateTime(a.approved_at)})</div>`;
+    if (showCompleted && a.completed_by) fields += `<div>${DCL.t("page.history.completedByLabel")}: <b>${completedByName}</b> (${DCL.fmtDateTime(a.completed_at)})</div>`;
+    if (showCompleted && a.action_taken) fields += `<div>${DCL.t("page.actions.actionTakenViewLabel")}: ${esc(a.action_taken)}</div>`;
+    if (showApproved && a.approved_by) fields += `<div>${DCL.t("page.history.approvedByLabel")}: <b>${approvedByName}</b> (${DCL.fmtDateTime(a.approved_at)})</div>`;
     if (a.status === "REJECTED" && a.reject_reason) fields += `<div>${DCL.t("page.history.rejectReasonShortLabel")}: <span style="color:var(--accent-red);">${esc(a.reject_reason)}</span></div>`;
+
+    const timelineHtml = DCL.renderActionTimeline(historyByAction[a.id] || [], inspMap);
 
     return `<div style="border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin-top:8px;">
       <div class="flex-between"><b>${esc(a.issue_desc)}</b><span class="badge ${statusBadgeCls[a.status]||'badge-gray'}">${esc(statusLabel)}</span></div>
       <div class="text-mute fs-xs" style="margin-top:6px; display:grid; grid-template-columns:1fr 1fr; gap:3px 12px;">${fields}</div>
+      <div class="hint fs-xs fw-700" style="margin-top:10px;">${DCL.t("page.history.timelineTitle")}</div>
+      <div style="margin-top:4px;">${timelineHtml}</div>
     </div>`;
   }).join("") : "";
 

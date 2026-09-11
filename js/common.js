@@ -160,6 +160,38 @@
   DCL.fmtCount = function(n){ return (n===null||n===undefined) ? "0" : Math.round(n).toLocaleString("ko-KR"); };
   DCL.fmtPercent = function(n){ return (n===null||n===undefined||isNaN(n)) ? "0.0%" : (Math.round(n*10)/10).toFixed(1) + "%"; };
 
+  // ---- 조치 처리 이력(action_history) 타임라인 렌더 (migration_007) --------------------
+  // 조치 1건이 배정→완료→반려→재배정→재완료→승인 처럼 여러 사이클을 거칠 때, actions
+  // 테이블은 "현재 상태" 한 줄만 남기므로 지난 이력이 덮어써져 사라진다. 이 헬퍼는
+  // action_history 행들을 시간순 타임라인 HTML로 그려, 점검 이력 조회/조치 관리 양쪽
+  // 화면에서 동일한 형태로 재사용한다.
+  DCL.renderActionTimeline = function(rows, inspMap){
+    const esc = function(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); };
+    if (!rows || !rows.length) return `<div class="text-mute fs-xs">${DCL.t("page.history.noTimeline")}</div>`;
+    const evLabel = { ASSIGN: DCL.t("page.history.evAssign"), COMPLETE: DCL.t("page.history.evComplete"), APPROVE: DCL.t("page.history.evApprove"), REJECT: DCL.t("page.history.evReject") };
+    const evBadge = { ASSIGN:"badge-yellow", COMPLETE:"badge-blue", APPROVE:"badge-green", REJECT:"badge-red" };
+    const sorted = rows.slice().sort((a,b)=> String(a.event_at||"").localeCompare(String(b.event_at||"")));
+    return sorted.map(function(h){
+      const actorName = h.actor_id ? esc((inspMap[h.actor_id]||{}).name || "-") : "-";
+      let detail = "";
+      if (h.event_type === "ASSIGN") {
+        const assigneeName = esc((inspMap[h.assignee_id]||{}).name || "-");
+        detail = `${DCL.t("common.col.actionAssignee")}: <b>${assigneeName}</b>` + (h.due_date ? ` · ${DCL.t("common.col.dueDate")}: ${DCL.fmtDate(h.due_date)}` : "");
+      } else if (h.event_type === "COMPLETE" && h.action_taken) {
+        detail = `${DCL.t("page.actions.actionTakenViewLabel")}: ${esc(h.action_taken)}`;
+      } else if (h.event_type === "REJECT" && h.reject_reason) {
+        detail = `<span style="color:var(--accent-red);">${DCL.t("page.history.rejectReasonShortLabel")}: ${esc(h.reject_reason)}</span>`;
+      }
+      return `<div style="display:flex; gap:8px; align-items:flex-start; padding:5px 0; border-bottom:1px dashed var(--border);">
+        <span class="badge ${evBadge[h.event_type]||'badge-gray'}" style="flex-shrink:0;">${esc(evLabel[h.event_type]||h.event_type)}</span>
+        <div style="flex:1; min-width:0;">
+          <div class="fs-xs">${DCL.fmtDateTime(h.event_at)} · ${actorName}</div>
+          ${detail ? `<div class="text-mute fs-xs" style="margin-top:2px;">${detail}</div>` : ""}
+        </div>
+      </div>`;
+    }).join("");
+  };
+
   // ---- 점검주기(cycle_type) 판정 -----------------------------------------------
   // dateStr: "YYYY-MM-DD". 요일/일자 판정은 문자열을 UTC 자정으로 고정 파싱해
   // 호출측(로컬시간대/UTC 기반) 어느쪽에서 만든 날짜문자열이든 동일하게 계산되도록 함.

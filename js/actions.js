@@ -80,6 +80,9 @@ function renderTable(){
     else if (a.status === "DONE") actionsHtml = `<button class="btn btn-sm btn-primary" onclick="openReview('${a.id}')">${DCL.t("page.actions.btnReview")}</button>`;
     else if (a.status === "REJECTED") actionsHtml = `<button class="btn btn-sm" onclick="openAssign('${a.id}')">${DCL.t("page.actions.btnReassignAfterReject")}</button>`;
     else actionsHtml = `<span class="text-mute fs-xs">${DCL.t("page.actions.doneStatic")}</span>`;
+    // 반려 후 재배정처럼 현재 상태만으로는 보이지 않는 지난 처리 이력(누가 언제 배정/완료/
+    // 승인/반려했는지)을 언제든 확인할 수 있도록, 상태와 무관하게 "이력" 버튼을 항상 노출한다.
+    actionsHtml += ` <button class="btn btn-sm" onclick="openHistory('${a.id}')" title="${DCL.t('page.actions.historyModalTitle')}">${DCL.t("page.actions.historyBtn")}</button>`;
 
     return `<tr id="actionRow-${a.id}">
       <td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td>
@@ -166,8 +169,10 @@ async function confirmAssign(){
   const assignee = document.getElementById("assignAssignee").value;
   const severity = document.getElementById("assignSeverity").value;
   const due = document.getElementById("assignDue").value || null;
+  const insp = DCL.getCurrentInspector();
   try{
-    await DCL.rpc("fn_assign_action", { p_action_id:id, p_assignee_id:assignee, p_due_date:due, p_severity:severity });
+    // p_by: 배정을 실행한 사람(migration_007) - action_history에 "누가 배정했는지" 남기기 위함
+    await DCL.rpc("fn_assign_action", { p_action_id:id, p_assignee_id:assignee, p_due_date:due, p_severity:severity, p_by: insp.id });
     DCL.toast(DCL.t("page.actions.assignedToast"));
     DCL.closeModal("assignModalOverlay");
     await loadAll();
@@ -224,6 +229,16 @@ async function review(id, approve){
     DCL.closeModal("reviewModalOverlay");
     await loadAll();
   }catch(e){}
+}
+
+// ---- 조치 처리 이력(배정/완료/승인/반려) 타임라인 -----------------------------------
+async function openHistory(id){
+  const body = document.getElementById("actionHistoryBody");
+  body.innerHTML = `<div class="empty-state">${DCL.t("common.loading")}</div>`;
+  DCL.openModal("historyModalOverlay");
+  const inspMap = Object.fromEntries(ALL_INSPECTORS.map(i=>[i.id,i]));
+  const rows = await DCL.select("action_history", q => q.eq("action_id", id));
+  body.innerHTML = DCL.renderActionTimeline(rows, inspMap);
 }
 
 function compressImage(file, maxWidth, quality){
