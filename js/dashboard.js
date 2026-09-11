@@ -155,7 +155,28 @@ function myTaskCounts(){
   const myOpenActions = ALL_ACTIONS.filter(a => a.assignee_id === insp.id && ["OPEN","IN_PROGRESS"].includes(a.status));
   const isAdmin = insp.role === "admin";
   const myApprovals = isAdmin ? ALL_ACTIONS.filter(a => a.status === "DONE") : [];
-  return { insp, isAdmin, myDueIds, myOpenActions, myApprovals };
+
+  // KPI박스 표시용 "실행한 건수 / 전체 건수" 계산. 조치/승인 박스의 팝업 목록(myOpenActions/myApprovals)은
+  // "아직 처리 안 한 것"만 담고 있어 그 안에서는 분자가 항상 0이 되어 의미가 없으므로, 전체 건수는
+  // 완료된 것까지 포함하도록 별도로 다시 집계한다(팝업 목록 자체는 그대로 유지 - 처리 대상만 보여줘야 함).
+  const doneIdsToday = new Set(ALL_INSPECTIONS.filter(i=>i.inspect_date===today).map(i=>i.part_id));
+  const myInspectDoneCnt = myDueIds.filter(id=>doneIdsToday.has(id)).length;
+  const myInspectTotalCnt = myDueIds.length;
+
+  const myActionAll = ALL_ACTIONS.filter(a => a.assignee_id === insp.id);
+  const myActionDoneCnt = myActionAll.filter(a => !["OPEN","IN_PROGRESS"].includes(a.status)).length;
+  const myActionTotalCnt = myActionAll.length;
+
+  // 승인은 "누가 승인했는지" 기록하는 담당자 필드가 없어 개인별 실행 건수를 특정할 수 없으므로,
+  // 조직 전체 기준으로 승인 프로세스(DONE 이상 도달)에 들어온 건수 대비 이미 처리(승인/반려)된 건수를 보여준다.
+  const approveAll = isAdmin ? ALL_ACTIONS.filter(a => ["DONE","APPROVED","REJECTED"].includes(a.status)) : [];
+  const myApproveDoneCnt = approveAll.filter(a => ["APPROVED","REJECTED"].includes(a.status)).length;
+  const myApproveTotalCnt = approveAll.length;
+
+  return {
+    insp, isAdmin, myDueIds, myOpenActions, myApprovals,
+    myInspectDoneCnt, myInspectTotalCnt, myActionDoneCnt, myActionTotalCnt, myApproveDoneCnt, myApproveTotalCnt
+  };
 }
 
 function renderMyTaskKpis(){
@@ -165,16 +186,17 @@ function renderMyTaskKpis(){
   const hintEl = document.querySelector('[data-i18n="page.dashboard.myListHint"]');
   if (hintEl) hintEl.textContent = DCL.t("page.dashboard.myListHint");
 
-  const { isAdmin, myDueIds, myOpenActions, myApprovals } = myTaskCounts();
-  document.getElementById("kpiMyInspect").textContent = DCL.fmtCount(myDueIds.length);
-  document.getElementById("kpiMyAction").textContent = DCL.fmtCount(myOpenActions.length);
+  const { isAdmin, myInspectDoneCnt, myInspectTotalCnt, myActionDoneCnt, myActionTotalCnt, myApproveDoneCnt, myApproveTotalCnt } = myTaskCounts();
+  // "실행한 건수 / 전체 건수" 형태로 표시 (예: 오늘 배정 4건 중 아직 아무것도 안 했으면 "0 / 4")
+  document.getElementById("kpiMyInspect").textContent = `${DCL.fmtCount(myInspectDoneCnt)} / ${DCL.fmtCount(myInspectTotalCnt)}`;
+  document.getElementById("kpiMyAction").textContent = `${DCL.fmtCount(myActionDoneCnt)} / ${DCL.fmtCount(myActionTotalCnt)}`;
 
   // 승인 박스는 관리자만 노출 (비관리자는 박스 자체를 숨기고 3열 → 2열 그리드로 전환)
   const approveTile = document.getElementById("kpiMyApproveTile");
   const grid = document.getElementById("myTaskGrid");
   if (approveTile){
     approveTile.style.display = isAdmin ? "" : "none";
-    document.getElementById("kpiMyApprove").textContent = DCL.fmtCount(myApprovals.length);
+    document.getElementById("kpiMyApprove").textContent = `${DCL.fmtCount(myApproveDoneCnt)} / ${DCL.fmtCount(myApproveTotalCnt)}`;
   }
   if (grid) grid.className = "grid " + (isAdmin ? "grid-3" : "grid-2");
 }
