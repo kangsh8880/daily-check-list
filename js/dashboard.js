@@ -167,19 +167,21 @@ function myTaskCounts(){
   //   기록)을 사용 - 오늘 등록한 건은 등록 즉시 상태가 DONE으로 바뀌어 위 분모(OPEN/IN_PROGRESS) 목록에서는
   //   빠지므로, 분모와 분자를 서로 다른 조건으로 각각 집계해야 "오늘 몇 건을 처리했는지"가 드러난다.
   const myActionTotalCnt = myOpenActions.length;
-  const myActionDoneTodayCnt = ALL_ACTIONS.filter(a => a.completed_by === insp.id && (a.completed_at||"").slice(0,10) === today).length;
+  const myActionDoneList = ALL_ACTIONS.filter(a => a.completed_by === insp.id && (a.completed_at||"").slice(0,10) === today);
+  const myActionDoneTodayCnt = myActionDoneList.length;
 
   // - 승인할 항목: 조치 승인/반려는 관리자 공통 권한이라(누가 처리하든 전사 동일 목록) 분모·분자 모두 전사
   //   기준으로 집계한다. 분모 = 현재 미승인(DONE) 상태로 남아있는 전체 건수(myApprovals와 동일 기준).
   //   분자 = 오늘 실제로 승인 또는 반려 처리된 건수. actions.approved_at(fn_review_action이 승인/반려
   //   공통으로 기록)을 사용한다.
   const myApproveTotalCnt = myApprovals.length;
-  const myApproveDoneTodayCnt = isAdmin
-    ? ALL_ACTIONS.filter(a => ["APPROVED","REJECTED"].includes(a.status) && (a.approved_at||"").slice(0,10) === today).length
-    : 0;
+  const myApproveDoneList = isAdmin
+    ? ALL_ACTIONS.filter(a => ["APPROVED","REJECTED"].includes(a.status) && (a.approved_at||"").slice(0,10) === today)
+    : [];
+  const myApproveDoneTodayCnt = myApproveDoneList.length;
 
   return {
-    insp, isAdmin, myDueIds, myOpenActions, myApprovals,
+    insp, isAdmin, myDueIds, myOpenActions, myApprovals, myActionDoneList, myApproveDoneList,
     myInspectDoneCnt, myInspectTotalCnt, myActionDoneTodayCnt, myActionTotalCnt, myApproveDoneTodayCnt, myApproveTotalCnt
   };
 }
@@ -192,20 +194,27 @@ function renderMyTaskKpis(){
   if (hintEl) hintEl.textContent = DCL.t("page.dashboard.myListHint");
 
   const { isAdmin, myInspectDoneCnt, myInspectTotalCnt, myActionDoneTodayCnt, myActionTotalCnt, myApproveDoneTodayCnt, myApproveTotalCnt } = myTaskCounts();
-  // 점검할 항목: "완료 / 오늘 배정된 전체" (예: 오늘 배정 4건 중 아직 아무것도 안 했으면 "0 / 4")
+  // 점검할 항목: "완료 / 오늘 배정된 전체" (예: 오늘 배정 4건 중 아직 아무것도 안 했으면 "0 / 4") - 클릭 시
+  // 팝업에서 완료/미완료가 바로 구분되므로 이 박스만 분수 형태를 유지한다.
   document.getElementById("kpiMyInspect").textContent = `${DCL.fmtCount(myInspectDoneCnt)} / ${DCL.fmtCount(myInspectTotalCnt)}`;
-  // 조치할 항목: "오늘 처리한 건수 / 현재 미해결 전체(나에게 배정된 것)"
-  document.getElementById("kpiMyAction").textContent = `${DCL.fmtCount(myActionDoneTodayCnt)} / ${DCL.fmtCount(myActionTotalCnt)}`;
 
-  // 승인 박스는 관리자만 노출 (비관리자는 박스 자체를 숨기고 3열 → 2열 그리드로 전환)
+  // "조치할 항목"(오늘 처리 / 미해결 전체)을 하나의 분수 박스로 합쳐두면 우연히 분자·분모가 같은 값이 될 때
+  // "오늘 처리한 실제 건수"와 "현재 남아있는 건수"를 혼동하기 쉽다 - 두 의미를 완전히 분리된 박스로 나눠
+  // "조치한 항목"(오늘 처리 건수)과 "조치할 항목"(현재 미해결 전체 건수)을 각각 단일 숫자로 표시한다.
+  document.getElementById("kpiMyActionDone").textContent = DCL.fmtCount(myActionDoneTodayCnt);
+  document.getElementById("kpiMyAction").textContent = DCL.fmtCount(myActionTotalCnt);
+
+  // 승인 관련 박스(승인한/승인할 항목)는 관리자만 노출 - 비관리자는 두 박스를 숨기고 5열 → 3열 그리드로 전환
+  const approveDoneTile = document.getElementById("kpiMyApproveDoneTile");
   const approveTile = document.getElementById("kpiMyApproveTile");
   const grid = document.getElementById("myTaskGrid");
+  if (approveDoneTile) approveDoneTile.style.display = isAdmin ? "" : "none";
   if (approveTile){
     approveTile.style.display = isAdmin ? "" : "none";
-    // 승인할 항목: "오늘 처리(승인+반려)한 건수 / 현재 미승인 전체(전사)"
-    document.getElementById("kpiMyApprove").textContent = `${DCL.fmtCount(myApproveDoneTodayCnt)} / ${DCL.fmtCount(myApproveTotalCnt)}`;
+    document.getElementById("kpiMyApproveDone").textContent = DCL.fmtCount(myApproveDoneTodayCnt);
+    document.getElementById("kpiMyApprove").textContent = DCL.fmtCount(myApproveTotalCnt);
   }
-  if (grid) grid.className = "grid " + (isAdmin ? "grid-3" : "grid-2");
+  if (grid) grid.className = "grid " + (isAdmin ? "grid-5" : "grid-3");
 }
 
 // 점검/조치/승인 대상 공용 모달 행 렌더 - 부품명/코드, (이상내용/상태/기한), 처리 버튼(기존 페이지로 이동)
@@ -219,8 +228,12 @@ function myTaskModalRow(kind, a, partMap){
       <td><a class="btn btn-sm" href="inspect.html?code=${encodeURIComponent(p.part_code)}">${DCL.t("page.inspect.inspectBtn")}</a></td></tr>`;
   }
   const p = partMap[a.part_id] || {};
-  const statusBadge = { OPEN:"badge-red", IN_PROGRESS:"badge-yellow", DONE:"badge-blue" }[a.status] || "badge-gray";
-  const btnLabel = DCL.t(kind === "myApprove" ? "page.dashboard.myTasks.approveBtn" : "page.dashboard.myTasks.actionBtn");
+  const statusBadge = { OPEN:"badge-red", IN_PROGRESS:"badge-yellow", DONE:"badge-blue", APPROVED:"badge-green", REJECTED:"badge-red" }[a.status] || "badge-gray";
+  // 조치한/승인한 항목(이미 처리 완료된 건)은 재처리를 유도하지 않도록 "보기"로, 조치할/승인할 항목은
+  // 각각 "조치하기"/"검수하기"로 처리 페이지 이동을 안내한다.
+  const btnLabelKey = kind === "myActionDone" || kind === "myApproveDone" ? "page.dashboard.myTasks.viewBtn"
+    : kind === "myApprove" ? "page.dashboard.myTasks.approveBtn" : "page.dashboard.myTasks.actionBtn";
+  const btnLabel = DCL.t(btnLabelKey);
   return `<tr><td><b>${p.part_name?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p.part_code?esc(p.part_code):""}</div></td>
     <td style="max-width:220px;">${esc(a.issue_desc||"-")}</td>
     <td><span class="badge ${statusBadge}">${DCL.t("status."+a.status)}</span></td>
@@ -380,12 +393,24 @@ async function openKpiListModal(kind){
     const { myDueIds } = myTaskCounts();
     rows = myDueIds.map(id => partMap[id] ? myTaskModalRow("myInspect", partMap[id], partMap) : "").join("");
     emptyKey = "page.dashboard.myListEmpty";
+  } else if (kind === "myActionDone") {
+    title = DCL.t("page.dashboard.myTasks.actionDoneHeader");
+    head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.status")}</th><th>${DCL.t("common.col.dueDate")}</th><th></th></tr>`;
+    const { myActionDoneList } = myTaskCounts();
+    rows = myActionDoneList.map(a => myTaskModalRow("myActionDone", a, partMap)).join("");
+    emptyKey = "page.dashboard.myTasks.actionDoneEmpty";
   } else if (kind === "myAction") {
     title = DCL.t("page.dashboard.myTasks.actionHeader");
     head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.status")}</th><th>${DCL.t("common.col.dueDate")}</th><th></th></tr>`;
     const { myOpenActions } = myTaskCounts();
     rows = myOpenActions.map(a => myTaskModalRow("myAction", a, partMap)).join("");
     emptyKey = "page.dashboard.myTasks.actionEmpty";
+  } else if (kind === "myApproveDone") {
+    title = DCL.t("page.dashboard.myTasks.approveDoneHeader");
+    head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.status")}</th><th>${DCL.t("common.col.dueDate")}</th><th></th></tr>`;
+    const { myApproveDoneList } = myTaskCounts();
+    rows = myApproveDoneList.map(a => myTaskModalRow("myApproveDone", a, partMap)).join("");
+    emptyKey = "page.dashboard.myTasks.approveDoneEmpty";
   } else if (kind === "myApprove") {
     title = DCL.t("page.dashboard.myTasks.approveHeader");
     head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.status")}</th><th>${DCL.t("common.col.dueDate")}</th><th></th></tr>`;
