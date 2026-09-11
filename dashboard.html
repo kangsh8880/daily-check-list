@@ -26,31 +26,8 @@
     <div class="content">
       <div id="assignWarnBanner" class="offline-banner" style="display:none; background:var(--pastel-yellow);"></div>
 
-      <!-- KPI 타일: 필터 미적용 (금일/최근7일 고정 기준) -->
-      <div class="grid grid-4">
-        <div class="kpi-tile clickable" data-kpi="rate" title="클릭하면 목록이 표시됩니다">
-          <div class="kpi-label" data-i18n="page.dashboard.kpi.rateLabel">금일 점검율</div>
-          <div class="kpi-value unit-percent" id="kpiRate">0.0%</div>
-          <div class="kpi-sub" id="kpiRateSub">대상 0건 중 0건 완료</div>
-        </div>
-        <div class="kpi-tile clickable" data-kpi="miss" title="클릭하면 목록이 표시됩니다">
-          <div class="kpi-label" data-i18n="page.dashboard.kpi.missLabel">금일 미점검</div>
-          <div class="kpi-value unit-alert" id="kpiMiss">0</div>
-          <div class="kpi-sub" data-i18n="page.dashboard.kpi.missSub">건 (배정 대비 미완료)</div>
-        </div>
-        <div class="kpi-tile clickable" data-kpi="abn" title="클릭하면 목록이 표시됩니다">
-          <div class="kpi-label" data-i18n="page.dashboard.kpi.abnLabel">금일 이상 발견</div>
-          <div class="kpi-value" id="kpiAbn">0</div>
-          <div class="kpi-sub" data-i18n="page.dashboard.kpi.abnSub">건</div>
-        </div>
-        <div class="kpi-tile clickable" data-kpi="action" title="클릭하면 목록이 표시됩니다">
-          <div class="kpi-label" data-i18n="page.dashboard.kpi.actionRateLabel">조치 이행율 (최근7일)</div>
-          <div class="kpi-value unit-percent" id="kpiActionRate">0.0%</div>
-          <div class="kpi-sub" id="kpiActionSub">승인완료 0 / 전체 0건 · 지연 0건</div>
-        </div>
-      </div>
-
-      <!-- 개인별 오늘 할 일: 점검/조치/승인 대상을 KPI박스로 표시 (필터 미적용). 클릭 → 상세 목록 팝업 → 목록에서 항목 클릭 → 처리 페이지로 이동 -->
+      <!-- 개인별 오늘 할 일: 점검/조치/승인 대상을 KPI박스로 표시 (필터 미적용). 클릭 → 상세 목록 팝업 → 목록에서 항목 클릭 → 처리 페이지로 이동
+           로그인한 사람이 오늘 처리해야 할 항목이므로 대시보드 최상단에 배치 -->
       <div class="card">
         <div class="card-head mb-0"><h3 id="myTodayTitle">오늘 내 할 일</h3><span class="hint" data-i18n="page.dashboard.myListHint">오늘 처리해야 할 점검·조치·승인 업무를 모두 모아서 보여줍니다</span></div>
         <div class="grid grid-5" id="myTaskGrid">
@@ -79,6 +56,30 @@
             <div class="kpi-value" id="kpiMyApprove">0</div>
             <div class="kpi-sub" data-i18n="page.dashboard.myTasks.approveSub">현재 미승인 전체(전사)</div>
           </div>
+        </div>
+      </div>
+
+      <!-- KPI 타일: 필터 미적용 (금일/최근7일 고정 기준) -->
+      <div class="grid grid-4">
+        <div class="kpi-tile clickable" data-kpi="rate" title="클릭하면 목록이 표시됩니다">
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.rateLabel">금일 점검율</div>
+          <div class="kpi-value unit-percent" id="kpiRate">0.0%</div>
+          <div class="kpi-sub" id="kpiRateSub">대상 0건 중 0건 완료</div>
+        </div>
+        <div class="kpi-tile clickable" data-kpi="miss" title="클릭하면 목록이 표시됩니다">
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.missLabel">금일 미점검</div>
+          <div class="kpi-value unit-alert" id="kpiMiss">0</div>
+          <div class="kpi-sub" data-i18n="page.dashboard.kpi.missSub">건 (배정 대비 미완료)</div>
+        </div>
+        <div class="kpi-tile clickable" data-kpi="abn" title="클릭하면 목록이 표시됩니다">
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.abnLabel">금일 이상 발견</div>
+          <div class="kpi-value" id="kpiAbn">0</div>
+          <div class="kpi-sub" data-i18n="page.dashboard.kpi.abnSub">건</div>
+        </div>
+        <div class="kpi-tile clickable" data-kpi="action" title="클릭하면 목록이 표시됩니다">
+          <div class="kpi-label" data-i18n="page.dashboard.kpi.actionRateLabel">조치 이행율 (최근7일)</div>
+          <div class="kpi-value unit-percent" id="kpiActionRate">0.0%</div>
+          <div class="kpi-sub" id="kpiActionSub">승인완료 0 / 전체 0건 · 지연 0건</div>
         </div>
       </div>
 
