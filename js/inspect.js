@@ -143,7 +143,10 @@ async function loadPartByCode(code){
   const parts = await DCL.select("parts", q => q.eq("part_code", code).eq("is_deleted", false).limit(1));
   if (!parts.length) { DCL.toast(DCL.t("page.inspect.partNotFound", {code}), "err"); return; }
   CURRENT_PART = parts[0];
-  CURRENT_ITEMS = await DCL.select("part_checklist_items", q => q.eq("part_id", CURRENT_PART.id).eq("is_active", true).order("item_order"));
+  // 점검항목은 부품 등록 시점의 스냅샷(part_checklist_items)이 아니라 항상 최신 템플릿(checklist_templates)에서 조회한다.
+  // part_checklist_items는 부품 등록 시 1회만 복사되고 이후 관리자가 템플릿의 상한/하한 등을 변경해도 갱신되지 않아,
+  // 등록 이후 기준이 바뀐 부품은 과거 기준(대부분 null)으로 판정되는 문제가 있었다.
+  CURRENT_ITEMS = await DCL.select("checklist_templates", q => q.eq("part_type_id", CURRENT_PART.part_type_id).eq("is_active", true).order("item_order"));
   ITEM_STATE = {};
   CURRENT_ITEMS.forEach((it,idx)=> ITEM_STATE[idx] = { input_value:null, judge_result:null, photo_url:null });
 
