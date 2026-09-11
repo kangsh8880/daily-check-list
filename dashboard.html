@@ -53,21 +53,31 @@
       <!-- 개인별 오늘 할 일: 점검/조치/승인 대상을 KPI박스로 표시 (필터 미적용). 클릭 → 상세 목록 팝업 → 목록에서 항목 클릭 → 처리 페이지로 이동 -->
       <div class="card">
         <div class="card-head mb-0"><h3 id="myTodayTitle">오늘 내 할 일</h3><span class="hint" data-i18n="page.dashboard.myListHint">오늘 처리해야 할 점검·조치·승인 업무를 모두 모아서 보여줍니다</span></div>
-        <div class="grid grid-3" id="myTaskGrid">
+        <div class="grid grid-5" id="myTaskGrid">
           <div class="kpi-tile clickable" data-kpi="myInspect" title="클릭하면 목록이 표시됩니다">
             <div class="kpi-label" data-i18n="page.dashboard.myTasks.inspectHeader">점검할 항목</div>
             <div class="kpi-value" id="kpiMyInspect">0 / 0</div>
             <div class="kpi-sub" data-i18n="page.dashboard.myTasks.inspectSub">완료 / 오늘 배정된 점검 대상</div>
           </div>
+          <div class="kpi-tile clickable" data-kpi="myActionDone" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.dashboard.myTasks.actionDoneHeader">조치한 항목</div>
+            <div class="kpi-value" id="kpiMyActionDone">0</div>
+            <div class="kpi-sub" data-i18n="page.dashboard.myTasks.actionDoneSub">오늘 조치 완료한 건수</div>
+          </div>
           <div class="kpi-tile clickable" data-kpi="myAction" title="클릭하면 목록이 표시됩니다">
             <div class="kpi-label" data-i18n="page.dashboard.myTasks.actionHeader">조치할 항목</div>
-            <div class="kpi-value" id="kpiMyAction">0 / 0</div>
-            <div class="kpi-sub" data-i18n="page.dashboard.myTasks.actionSub">오늘 처리 / 나에게 배정된 미해결 전체</div>
+            <div class="kpi-value" id="kpiMyAction">0</div>
+            <div class="kpi-sub" data-i18n="page.dashboard.myTasks.actionSub">나에게 배정된 미해결 전체</div>
+          </div>
+          <div class="kpi-tile clickable" data-kpi="myApproveDone" id="kpiMyApproveDoneTile" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.dashboard.myTasks.approveDoneHeader">승인한 항목</div>
+            <div class="kpi-value" id="kpiMyApproveDone">0</div>
+            <div class="kpi-sub" data-i18n="page.dashboard.myTasks.approveDoneSub">오늘 승인·반려 처리한 건수(전사)</div>
           </div>
           <div class="kpi-tile clickable" data-kpi="myApprove" id="kpiMyApproveTile" title="클릭하면 목록이 표시됩니다">
             <div class="kpi-label" data-i18n="page.dashboard.myTasks.approveHeader">승인할 항목</div>
-            <div class="kpi-value" id="kpiMyApprove">0 / 0</div>
-            <div class="kpi-sub" data-i18n="page.dashboard.myTasks.approveSub">금일 처리 / 미승인 전체(전사)</div>
+            <div class="kpi-value" id="kpiMyApprove">0</div>
+            <div class="kpi-sub" data-i18n="page.dashboard.myTasks.approveSub">현재 미승인 전체(전사)</div>
           </div>
         </div>
       </div>
