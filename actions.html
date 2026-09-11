@@ -114,6 +114,14 @@
   </div>
 </div>
 
+<!-- 조치 처리 이력(배정/완료/승인/반려) 타임라인 팝업 -->
+<div class="modal-overlay" id="historyModalOverlay">
+  <div class="modal" style="width:600px;">
+    <div class="modal-header"><h3 data-i18n="page.actions.historyModalTitle">조치 처리 이력</h3><div class="modal-close" onclick="DCL.closeModal('historyModalOverlay')">✕</div></div>
+    <div class="modal-body" id="actionHistoryBody"></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="js/supabase-config.js"></script>
 <script src="js/i18n.js"></script>
