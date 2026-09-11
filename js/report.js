@@ -122,14 +122,16 @@ function renderBlock2(today){
   const targetCnt = dueIds.length;
   const remainCnt = targetCnt - doneCnt;
   const rate = targetCnt ? (doneCnt/targetCnt*100) : 0;
+  const tAbnList = tInspections.filter(i=>i.overall_result==="ABNORMAL");
 
+  document.getElementById("kpiTRate").textContent = DCL.fmtPercent(rate);
   document.getElementById("kpiTTarget").textContent = DCL.fmtCount(targetCnt);
   document.getElementById("kpiTDone").textContent = DCL.fmtCount(doneCnt);
   document.getElementById("kpiTRemain").textContent = DCL.fmtCount(remainCnt);
-  document.getElementById("kpiTRate").textContent = DCL.fmtPercent(rate);
+  document.getElementById("kpiTAbn").textContent = DCL.fmtCount(tAbnList.length);
 
   const remainList = dueIds.filter(id=>!doneIds.has(id));
-  STATE.t = { today, dueIds, doneIds, remainList, tInspections };
+  STATE.t = { today, dueIds, doneIds, remainList, tInspections, tAbnList };
 
   renderByInspectorTable(dueIds, doneIds);
 }
@@ -248,6 +250,23 @@ async function openKpiListModal(kind){
       const p = partMap[i.part_id];
       const resultBadge = i.overall_result === "ABNORMAL" ? `<span class="badge badge-red">${DCL.t("result.ABNORMAL")}</span>` : `<span class="badge badge-green">${DCL.t("result.NORMAL")}</span>`;
       return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td>${resultBadge}</td></tr>`;
+    }).join("");
+  } else if (kind === "t_abn") {
+    title = DCL.t("page.report.tAbnModalTitle");
+    head = `<tr><th>${DCL.t("common.col.partCode")}</th><th>${DCL.t("common.col.partName")}</th><th>${DCL.t("common.inspectorLabel")}</th><th>${DCL.t("common.col.note")}</th></tr>`;
+    const tAbnIds = STATE.t.tAbnList.map(i=>i.id);
+    // 비고란: 점검 메모(note, 대부분 미입력)가 아니라 실제로 "이상"으로 판정된 점검항목명과 측정값을 표시
+    const tAbnResults = tAbnIds.length
+      ? await DCL.select("inspection_results", q => q.in("inspection_id", tAbnIds).eq("judge_result", "ABNORMAL"))
+      : [];
+    const tResultsByInspection = {};
+    tAbnResults.forEach(r=>{ (tResultsByInspection[r.inspection_id]=tResultsByInspection[r.inspection_id]||[]).push(r); });
+    rows = STATE.t.tAbnList.map(i=>{
+      const p = partMap[i.part_id];
+      const items = (tResultsByInspection[i.id]||[])
+        .map(r=>`${esc(r.item_name)}: ${esc(r.input_value ?? "-")}`)
+        .join(", ");
+      return `<tr><td class="mono"><b>${p?esc(p.part_code):"-"}</b></td><td>${p?esc(p.part_name):"-"}</td><td class="text-mute">${esc(inspMap[i.inspector_id]?.name||"-")}</td><td class="text-mute" style="max-width:260px;">${items || "-"}</td></tr>`;
     }).join("");
   } else if (kind === "tmr_parts") {
     title = DCL.t("page.report.tomorrowPartsTitle");
