@@ -189,8 +189,9 @@ a:hover{ text-decoration:underline; }
 .grid-2{ grid-template-columns:repeat(2,1fr); }
 .grid-3{ grid-template-columns:repeat(3,1fr); }
 .grid-4{ grid-template-columns:repeat(4,1fr); }
-@media (max-width:1024px){ .grid-3,.grid-4{ grid-template-columns:repeat(2,1fr); } }
-@media (max-width:640px){ .grid-2,.grid-3,.grid-4{ grid-template-columns:1fr; } }
+.grid-5{ grid-template-columns:repeat(5,1fr); }
+@media (max-width:1024px){ .grid-3,.grid-4,.grid-5{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:640px){ .grid-2,.grid-3,.grid-4,.grid-5{ grid-template-columns:1fr; } }
 
 /* ---------------- KPI 타일 ---------------- */
 /* 대시보드 구축 원칙: KPI box 내부 텍스트는 가운데 정렬, 일반 카드보다 한 단계
