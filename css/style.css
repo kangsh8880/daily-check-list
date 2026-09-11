@@ -263,7 +263,14 @@ thead th{
 tbody td{ padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
 tbody tr:last-child td{ border-bottom:none; }
 tbody tr:hover{ background:var(--bg-soft); }
-.row-actions{ display:flex; gap:6px; }
+/* row-actions는 <td class="row-actions">에 직접 쓰이므로 display:flex를 주면 안 된다.
+   display:flex를 주면 그 td는 table-cell이 아니게 되어 행 전체 높이만큼 늘어나지 못하고
+   tbody td의 vertical-align:middle도 적용되지 않아, 옆 컬럼(상태 배지 등)과 세로 위치가
+   어긋나 보인다(이상내용이 2줄로 줄바꿈되는 행에서 특히 두드러짐). td는 table-cell로
+   그대로 두고, 버튼들은 inline-flex(.btn)라 흰 여백만 없애면 자연스럽게 한 줄로 붙는다. */
+.row-actions{ white-space:nowrap; }
+.row-actions > *{ margin-right:6px; }
+.row-actions > *:last-child{ margin-right:0; }
 /* 대시보드 "오늘 내 할 일"에서 넘어온 특정 행을 잠깐 강조 (원색 대신 파스텔 노랑 사용) */
 tbody tr.row-focus-highlight{ background:var(--pastel-yellow); transition:background 1.2s ease; }
 
