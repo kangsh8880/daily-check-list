@@ -73,7 +73,11 @@
         <div class="card-head report-block-head">
           <h3><span class="report-block-num">2</span><span data-i18n="page.report.block2Title">금일 점검계획 현황</span><span class="text-mute fs-sm" id="block2DateLabel"></span></h3>
         </div>
-        <div class="grid grid-4">
+        <div class="grid grid-5">
+          <div class="kpi-tile kpi-tile-sm clickable" data-kpi="t_rate" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.report.planRate">진행율</div>
+            <div class="kpi-value unit-percent" id="kpiTRate">0.0%</div>
+          </div>
           <div class="kpi-tile kpi-tile-sm clickable" data-kpi="t_rate" title="클릭하면 목록이 표시됩니다">
             <div class="kpi-label" data-i18n="page.report.planTarget">점검 대상</div>
             <div class="kpi-value" id="kpiTTarget">0</div>
@@ -86,9 +90,9 @@
             <div class="kpi-label" data-i18n="page.report.planRemain">잔여(미점검)</div>
             <div class="kpi-value unit-alert" id="kpiTRemain">0</div>
           </div>
-          <div class="kpi-tile kpi-tile-sm clickable" data-kpi="t_rate" title="클릭하면 목록이 표시됩니다">
-            <div class="kpi-label" data-i18n="page.report.planRate">진행율</div>
-            <div class="kpi-value unit-percent" id="kpiTRate">0.0%</div>
+          <div class="kpi-tile kpi-tile-sm clickable" data-kpi="t_abn" title="클릭하면 목록이 표시됩니다">
+            <div class="kpi-label" data-i18n="page.report.planAbn">이상발생</div>
+            <div class="kpi-value unit-alert" id="kpiTAbn">0</div>
           </div>
         </div>
         <div class="divider"></div>
