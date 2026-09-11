@@ -127,8 +127,9 @@ function renderTodayKpis(){
   const overdueBody = document.getElementById("overdueBody");
   overdueBody.innerHTML = overdue.length ? overdue.map(a=>{
     const p = partMap[a.part_id];
-    return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td class="text-red">${DCL.fmtDate(a.due_date)}</td></tr>`;
-  }).join("") : `<tr><td colspan="3" class="empty-state">${DCL.t("page.dashboard.overdueEmpty")}</td></tr>`;
+    const assigneeName = inspMap[a.assignee_id]?.name || DCL.t("common.unassigned");
+    return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td class="text-mute">${esc(assigneeName)}</td><td class="text-red">${DCL.fmtDate(a.due_date)}</td></tr>`;
+  }).join("") : `<tr><td colspan="4" class="empty-state">${DCL.t("page.dashboard.overdueEmpty")}</td></tr>`;
 
   LAST_CTX = {
     rate, targetCnt, doneCnt,
@@ -244,7 +245,10 @@ function renderTrends(){
   ABN_CHART = new Chart(document.getElementById("abnormalChart"), {
     type:"bar",
     data:{ labels, datasets:[{ label:KPI_NAMES.abnormal, data:abnData, backgroundColor:pastel.redBg, borderColor:pastel.red, borderWidth:1, borderRadius:4 }] },
-    options: commonOpt
+    // 이상 발견 "건수"는 인원(명)과 동일하게 항상 정수이므로 y축도 정수 눈금만 표시 (0.2건 같은 소수 눈금 금지).
+    // stepSize는 강제하지 않고 precision:0만 지정해, 값 범위가 커지면 Chart.js가 1/2/5/10 단위로 자동
+    // 조정하되 항상 정수로만 반올림하게 한다.
+    options: Object.assign({}, commonOpt, { scales:{ y:{ beginAtZero:true, ticks:{ precision:0 }, grid:{ color:"rgba(150,150,150,0.15)" } }, x:{ grid:{ display:false } } } })
   });
 
   ACTION_CHART && ACTION_CHART.destroy();
