@@ -198,11 +198,20 @@ a:hover{ text-decoration:underline; }
 .kpi-tile .kpi-value.unit-percent{ color:var(--accent-blue); }
 .kpi-tile .kpi-value.unit-alert{ color:var(--accent-red); }
 .kpi-tile .kpi-sub{ font-size:var(--fs-xs); color:var(--text-mute); margin-top:4px; }
-/* 대시보드 구축 원칙: 클릭 가능한 KPI 카드는 호버 시 위로 살짝 떠오르는(lift)
-   인터랙션 + 한 단계 더 진한 그림자(--shadow-lg)로 강조한다 (원색 사용 없이
-   그림자/움직임으로만 강조; 색상 배경 변경 금지) */
-.kpi-tile.clickable{ cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .15s; }
-.kpi-tile.clickable:hover{ border-color:var(--border-strong); box-shadow:var(--shadow-lg); transform:translateY(-3px); }
+/* 대시보드 구축 원칙: 클릭 가능한 KPI 카드는 호버 시 위로 살짝 떠오르는(lift) 인터랙션 +
+   한 단계 더 진한 그림자(--shadow-lg) + 좌측 액센트 바(12px, --accent-green)로 강조한다.
+   초록색은 "조치를 하면 순방향(정상 흐름)으로 진행된다"는 의미로 선택 — 배지/성공버튼 등에 이미
+   쓰이는 --accent-green을 그대로 재사용하며 배경색·나머지 테두리는 바꾸지 않는다(그림자/움직임/
+   좌측 바로만 강조). 액센트 바 폭(12px)만큼 왼쪽 패딩을 줄여(16px→5px) 호버 전후 박스 폭이
+   그대로 유지되도록 한다. */
+.kpi-tile.clickable{
+  cursor:pointer; border-left:1px solid var(--border);
+  transition:box-shadow .15s, transform .15s, border-left-width .15s, border-left-color .15s, padding-left .15s;
+}
+.kpi-tile.clickable:hover{
+  box-shadow:var(--shadow-lg); transform:translateY(-3px);
+  border-left:12px solid var(--accent-green); padding-left:5px;
+}
 
 /* 일일보고(report.html) 전용 - KPI 박스 높이를 기본(.kpi-tile) 대비 약 30% 축소.
    패딩/글자크기만 줄이고 색상·정렬·강조 규칙은 그대로 유지한다 (report.html에서만 사용). */
