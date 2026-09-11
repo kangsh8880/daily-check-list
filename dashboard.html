@@ -72,27 +72,29 @@
         </div>
       </div>
 
-      <!-- 추이 차트: 기간 필터 적용 -->
+      <!-- 추이 차트 3종: 한 줄(그리드) 배치, 기간 필터는 3개 차트 모두에 공통 적용 -->
       <div class="card">
         <div class="card-head">
-          <h3 id="trendTitle1">점검율 추이</h3>
+          <h3 data-i18n="page.dashboard.trendSectionTitle">추이 차트</h3>
           <select id="periodFilter" style="width:150px;">
             <option value="7" data-i18n="common.period.7">최근 7일</option>
             <option value="30" data-i18n="common.period.30">최근 30일</option>
             <option value="90" data-i18n="common.period.90">최근 90일</option>
           </select>
         </div>
-        <div class="chart-box"><canvas id="rateChart"></canvas></div>
-      </div>
-
-      <div class="grid grid-2">
-        <div class="card">
-          <div class="card-head"><h3 id="trendTitle2">이상 발견 건수 추이</h3></div>
-          <div class="chart-box-sm"><canvas id="abnormalChart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-head"><h3 id="trendTitle3">조치 이행율 추이</h3></div>
-          <div class="chart-box-sm"><canvas id="actionChart"></canvas></div>
+        <div class="grid grid-3">
+          <div>
+            <h4 class="trend-chart-title" id="trendTitle1">점검율 추이</h4>
+            <div class="chart-box-sm"><canvas id="rateChart"></canvas></div>
+          </div>
+          <div>
+            <h4 class="trend-chart-title" id="trendTitle2">이상 발견 건수 추이</h4>
+            <div class="chart-box-sm"><canvas id="abnormalChart"></canvas></div>
+          </div>
+          <div>
+            <h4 class="trend-chart-title" id="trendTitle3">조치 이행율 추이</h4>
+            <div class="chart-box-sm"><canvas id="actionChart"></canvas></div>
+          </div>
         </div>
       </div>
 
