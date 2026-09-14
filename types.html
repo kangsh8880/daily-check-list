@@ -27,6 +27,7 @@
       <div class="tabs">
         <div class="tab active" data-tab="types" data-i18n="page.types.tabTypes">부품유형</div>
         <div class="tab" data-tab="templates" data-i18n="page.types.templateTitle">점검항목 템플릿</div>
+        <div class="tab" data-tab="recommend" data-i18n="page.types.tabRecommend">점검항목 추천</div>
       </div>
 
       <!-- 부품유형 탭 -->
@@ -59,6 +60,30 @@
             <table>
               <thead><tr><th style="width:56px;" data-i18n="common.col.order">순서</th><th data-i18n="common.col.itemName">점검항목명</th><th data-i18n="common.col.judgeType">판정유형</th><th data-i18n="page.types.colUnitCriteria">단위/기준</th><th data-i18n="page.types.colPhotoRequired">사진필수</th><th style="width:100px;" data-i18n="common.col.manage">관리</th></tr></thead>
               <tbody id="itemsBody"><tr><td colspan="6" class="empty-state" data-i18n="page.types.selectTypeFirst">부품유형을 선택하세요</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 점검항목 추천 탭: 신규 부품유형 등록 직후 자동 전환되며, 표준 라이브러리(생소한
+           유형은 AI 보완)로 TOP5 점검항목을 추천해 점검항목 확정을 돕는다 -->
+      <div id="tabRecommend" style="display:none;">
+        <div id="recommendBanner" class="offline-banner" style="display:none; background:var(--pastel-green-soft); border:1px solid var(--border);"></div>
+        <div class="card">
+          <div class="card-head">
+            <h3 data-i18n="page.types.tabRecommend">점검항목 추천</h3>
+            <div class="flex gap-8">
+              <select id="recommendTypeSelect" style="width:220px;"></select>
+              <button class="btn" id="recommendRefreshBtn" data-i18n="page.types.recommendRefreshBtn">추천 새로고침</button>
+              <button class="btn btn-primary" id="recommendAddAllBtn" data-i18n="page.types.recommendAddAllBtn">추천 5개 모두 추가</button>
+            </div>
+          </div>
+          <div class="text-mute fs-xs" style="margin:-4px 0 12px;" data-i18n="page.types.recommendDesc">부품유형을 선택하면 표준 라이브러리(필요 시 AI)가 가장 적정한 점검항목 TOP5를 추천합니다</div>
+          <div id="recommendMeta" style="margin-bottom:10px;"></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th style="width:56px;" data-i18n="common.col.order">순서</th><th data-i18n="common.col.itemName">점검항목명</th><th data-i18n="common.col.judgeType">판정유형</th><th data-i18n="page.types.colUnitCriteria">단위/기준</th><th data-i18n="page.types.colPhotoRequired">사진필수</th><th data-i18n="page.types.colReason">추천 사유</th><th style="width:100px;" data-i18n="common.col.manage">관리</th></tr></thead>
+              <tbody id="recommendBody"><tr><td colspan="7" class="empty-state" data-i18n="page.types.recommendSelectFirst">부품유형을 선택하세요</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -123,6 +148,8 @@
 <script src="js/supabase-config.js"></script>
 <script src="js/i18n.js"></script>
 <script src="js/common.js"></script>
+<script src="js/ai-config.js"></script>
+<script src="js/type-recommend.js"></script>
 <script src="js/types.js"></script>
 </body>
 </html>
