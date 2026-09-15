@@ -217,7 +217,8 @@ async function savePart(){
 async function deletePart(id, name){
   if (!confirm(DCL.t("page.parts.confirmDelete", {name}))) return;
   try{
-    await DCL.rpc("fn_delete_part", { p_id:id });
+    const insp = DCL.getCurrentInspector();
+    await DCL.rpc("fn_delete_part", { p_id:id, p_by: insp?.id || null });
     DCL.toast(DCL.t("common.toast.deleted"));
     await loadAll();
   }catch(e){}
