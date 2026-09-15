@@ -13,9 +13,9 @@ document.addEventListener("DOMContentLoaded", async function(){
     document.getElementById("setupWarning").style.display = "block";
   }
 
-  // 이미 로그인 되어 있으면 바로 대시보드로
+  // 이미 로그인 되어 있으면 바로 대시보드로 (남아있는 복귀 목적지가 있으면 그쪽으로)
   const existing = DCL.getCurrentInspector();
-  if (existing) { location.href = "dashboard.html"; return; }
+  if (existing) { location.href = DCL.consumeReturnTo() || "dashboard.html"; return; }
 
   const inspectors = await DCL.select("inspectors", q => q.eq("is_active", true).order("name"));
   const sel = document.getElementById("inspectorSelect");
@@ -51,6 +51,8 @@ document.addEventListener("DOMContentLoaded", async function(){
       if (pin !== opt.dataset.pin) { DCL.toast(DCL.t("page.index.pinMismatchToast"), "err"); return; }
     }
     DCL.setCurrentInspector(inspector);
-    location.href = "dashboard.html";
+    // 로그인 전 딥링크(QR 스캔 등)로 진입했다가 튕겨나온 경우 그 화면으로 바로 복귀,
+    // 아니면 기존처럼 대시보드로 이동
+    location.href = DCL.consumeReturnTo() || "dashboard.html";
   });
 });

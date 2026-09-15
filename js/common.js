@@ -43,6 +43,10 @@
 
   // ---- 인증 (이름/사번 선택 로그인, 세션 저장) --------------------------------
   const AUTH_KEY = "dcl_current_inspector";
+  // 로그인 안 된 상태에서 QR(inspect.html?code=...) 등 딥링크로 진입 → 로그인 화면으로
+  // 튕겨나가면서 원래 목적지가 유실되는 문제 보완: 리다이렉트 직전 목적지를 저장해두고,
+  // 로그인 성공 시(index.js) 대시보드 대신 그 목적지로 바로 복귀시킨다.
+  const RETURN_TO_KEY = "dcl_return_to";
   DCL.getCurrentInspector = function(){
     try { return JSON.parse(sessionStorage.getItem(AUTH_KEY) || "null"); } catch(e){ return null; }
   };
@@ -53,10 +57,25 @@
     sessionStorage.removeItem(AUTH_KEY);
     location.href = "index.html";
   };
+  // 로그인 성공 직후(index.js) 1회 호출 - 저장된 목적지를 꺼내면서 동시에 지운다.
+  DCL.consumeReturnTo = function(){
+    try {
+      const dest = sessionStorage.getItem(RETURN_TO_KEY);
+      if (dest) sessionStorage.removeItem(RETURN_TO_KEY);
+      return dest || null;
+    } catch(e){ return null; }
+  };
   // allowedRoles 생략 시 로그인만 확인. admin은 모든 화면 접근 가능.
   DCL.requireAuth = function(allowedRoles){
     const insp = DCL.getCurrentInspector();
-    if (!insp) { location.href = "index.html"; return null; }
+    if (!insp) {
+      try {
+        const dest = location.pathname.split("/").pop() + location.search;
+        if (dest && dest !== "index.html") sessionStorage.setItem(RETURN_TO_KEY, dest);
+      } catch(e){ /* sessionStorage 접근 실패해도 로그인 자체는 진행되어야 하므로 무시 */ }
+      location.href = "index.html";
+      return null;
+    }
     if (allowedRoles && allowedRoles.length && insp.role !== "admin" && !allowedRoles.includes(insp.role)) {
       DCL.toast(DCL.t("common.noPermission"), "err");
       setTimeout(()=>location.href = "dashboard.html", 700);
