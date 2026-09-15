@@ -315,15 +315,16 @@
   };
 
   // ---- 사용자 설명서 버튼 (topbar-right 우측 상단, HTML 수정 불필요) -----------------
-  // v1.2: AI 어시스턴트 기능 제거에 따른 관련 안내 삭제, "일일보고" 화면(12장, 관리자 전용)
-  // 신규 반영 Word 사용자 활용 설명서를 새 탭에서 엽니다.
+  // v1.3: 문의사항(7장) 신규 챕터, 대시보드 "오늘 할 일" 5타일 개편, 조치 처리 이력(5.5),
+  // 점검 이력 상세 조치정보, 부품 구매일자 채번, 점검항목 추천(11.3) 등을 반영한
+  // Word 사용자 활용 설명서를 새 탭에서 엽니다.
   DCL.initUserManualButton = function(){
     const mount = document.querySelector(".topbar-right");
     if (!mount || document.getElementById("userManualBtn")) return;
     const a = document.createElement("a");
     a.id = "userManualBtn";
     a.className = "user-manual-btn no-print";
-    a.href = "manual/user-manual-v1.2.docx";
+    a.href = "manual/user-manual-v1.3.docx";
     a.target = "_blank";
     a.rel = "noopener";
     a.title = DCL.t("common.userManual");
