@@ -60,7 +60,7 @@
       </div>
 
       <!-- KPI 타일: 필터 미적용 (금일/최근7일 고정 기준) -->
-      <div class="grid grid-4">
+      <div class="grid grid-6">
         <div class="kpi-tile clickable" data-kpi="rate" title="클릭하면 목록이 표시됩니다">
           <div class="kpi-label" data-i18n="page.dashboard.kpi.rateLabel">금일 점검율</div>
           <div class="kpi-value unit-percent" id="kpiRate">0.0%</div>
@@ -74,6 +74,16 @@
         <div class="kpi-tile clickable" data-kpi="abn" title="클릭하면 목록이 표시됩니다">
           <div class="kpi-label" data-i18n="page.dashboard.kpi.abnLabel">금일 이상 발견</div>
           <div class="kpi-value" id="kpiAbn">0</div>
+          <div class="kpi-sub" data-i18n="page.dashboard.kpi.abnSub">건</div>
+        </div>
+        <div class="kpi-tile clickable" data-kpi="progress" title="클릭하면 목록이 표시됩니다">
+          <div class="kpi-label" data-i18n="page.actions.kpiProgress">조치중</div>
+          <div class="kpi-value" id="kpiProgress">0</div>
+          <div class="kpi-sub" data-i18n="page.dashboard.kpi.abnSub">건</div>
+        </div>
+        <div class="kpi-tile clickable" data-kpi="pendingApprove" title="클릭하면 목록이 표시됩니다">
+          <div class="kpi-label" data-i18n="page.actions.kpiDone">완료대기(승인전)</div>
+          <div class="kpi-value" id="kpiPendingApprove">0</div>
           <div class="kpi-sub" data-i18n="page.dashboard.kpi.abnSub">건</div>
         </div>
         <div class="kpi-tile clickable" data-kpi="action" title="클릭하면 목록이 표시됩니다">
