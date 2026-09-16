@@ -96,11 +96,10 @@ function renderTable(){
   document.getElementById("summaryHint").textContent = DCL.t("page.i18nAdmin.summary", { n: DCL.fmtCount(list.length) });
 
   const body = document.getElementById("rowsBody");
-  if (!list.length) { body.innerHTML = `<tr><td colspan="6" class="empty-state">${DCL.t("page.i18nAdmin.emptyList")}</td></tr>`; return; }
+  if (!list.length) { body.innerHTML = `<tr><td colspan="5" class="empty-state">${DCL.t("page.i18nAdmin.emptyList")}</td></tr>`; return; }
 
   body.innerHTML = list.map((r, idx) => `
-    <tr>
-      <td class="mono text-mute fs-xs">${esc(r.key)}</td>
+    <tr title="${escAttr(r.key)}">
       <td>${esc(r.base)}</td>
       <td><span class="badge badge-blue">${r.lang === "en" ? "EN" : "VI"}</span></td>
       <td><input type="text" class="i18n-edit-input" data-key="${escAttr(r.key)}" data-lang="${r.lang}" value="${escAttr(r.translated)}" style="width:100%; ${r.isOverridden ? 'border-color:var(--text);' : ''}"/></td>

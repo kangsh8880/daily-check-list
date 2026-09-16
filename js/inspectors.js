@@ -1,7 +1,7 @@
 // ============================================================================
 // 점검자 관리
 // ============================================================================
-let ALL_INSPECTORS=[], ALL_ASSIGNMENTS=[];
+let ALL_INSPECTORS=[], ALL_ASSIGNMENTS=[], ALL_PARTS=[];
 
 document.addEventListener("DOMContentLoaded", async function(){
   const insp = DCL.initPage("inspectors.html", { roles:["admin"] });
@@ -14,12 +14,16 @@ document.addEventListener("DOMContentLoaded", async function(){
 });
 
 async function load(){
-  [ALL_INSPECTORS, ALL_ASSIGNMENTS] = await Promise.all([
+  [ALL_INSPECTORS, ALL_ASSIGNMENTS, ALL_PARTS] = await Promise.all([
     DCL.select("inspectors", q => q.eq("is_active", true).order("name")),
-    DCL.select("assignments", q => q.eq("is_active", true))
+    DCL.select("assignments", q => q.eq("is_active", true)),
+    DCL.select("parts", q => q.eq("is_deleted", false))
   ]);
+  // 배정된 부품이 삭제(is_deleted=true)되면 더 이상 "배정 부품수"에 잡히면 안 되므로,
+  // 살아있는(삭제되지 않은) 부품에 대한 배정만 카운트한다(대시보드/조치관리 KPI와 동일한 원칙).
+  const livePartIds = new Set(ALL_PARTS.map(p=>p.id));
   const cntByInsp = {};
-  ALL_ASSIGNMENTS.forEach(a => cntByInsp[a.inspector_id] = (cntByInsp[a.inspector_id]||0)+1);
+  ALL_ASSIGNMENTS.forEach(a => { if (livePartIds.has(a.part_id)) cntByInsp[a.inspector_id] = (cntByInsp[a.inspector_id]||0)+1; });
 
   const roleLabel = { admin:`<span class="badge badge-blue">${DCL.t("role.admin")}</span>`, action_owner:`<span class="badge badge-yellow">${DCL.t("role.action_owner")}</span>`, inspector:`<span class="badge badge-gray">${DCL.t("role.inspector")}</span>` };
   const body = document.getElementById("inspBody");
