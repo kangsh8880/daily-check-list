@@ -66,6 +66,15 @@ function duePartIdsOn(dateStr){
   return targetPartIds().filter(id => DCL.isDueOn(partMap[id], dateStr));
 }
 
+// 부품이 삭제(is_deleted=true)되면 그 부품에 달린 조치는 더 이상 실제로 처리할 대상이 없다.
+// "현재 처리 필요" 성격의 KPI(조치중/완료대기/기한초과/조치할 항목/승인할 항목)는 이 함수로 걸러낸
+// "살아있는 부품"에 연결된 조치만 집계한다. 단, 조치 레코드 자체는 삭제하지 않고 그대로 보존되므로
+// "오늘 처리한 건수"(이미 끝난 이력)나 조치 처리 이력 타임라인/점검 이력 조회 화면은 이 필터와 무관하게
+// 계속 전체를 보여준다.
+function livePartIdSet(){
+  return new Set(ALL_PARTS.map(p=>p.id));
+}
+
 // ---- 금일 KPI (필터 미적용) ---------------------------------------------------
 let LAST_CTX = {};
 function renderTodayKpis(){
@@ -114,19 +123,23 @@ function renderTodayKpis(){
   const abnormalToday = ALL_INSPECTIONS.filter(i=>i.inspect_date===today && i.overall_result==="ABNORMAL").length;
   document.getElementById("kpiAbn").textContent = DCL.fmtCount(abnormalToday);
 
-  // 조치중 / 완료대기(승인전) - 조치관리(actions.js) 화면과 동일하게 날짜 필터 없이 현재 상태 건수 그대로 표시
-  const progressCnt = ALL_ACTIONS.filter(a=>a.status==="IN_PROGRESS").length;
-  const pendingApproveCnt = ALL_ACTIONS.filter(a=>a.status==="DONE").length;
+  // 조치중 / 완료대기(승인전) - 조치관리(actions.js) 화면과 동일하게 날짜 필터 없이 현재 상태 건수 그대로 표시.
+  // 부품이 삭제된 조치는 더 이상 처리 대상이 아니므로 집계에서 제외(livePartIdSet) - 조치 기록 자체는 보존됨.
+  const livePartIds = livePartIdSet();
+  const progressCnt = ALL_ACTIONS.filter(a=>a.status==="IN_PROGRESS" && livePartIds.has(a.part_id)).length;
+  const pendingApproveCnt = ALL_ACTIONS.filter(a=>a.status==="DONE" && livePartIds.has(a.part_id)).length;
   document.getElementById("kpiProgress").textContent = DCL.fmtCount(progressCnt);
   document.getElementById("kpiPendingApprove").textContent = DCL.fmtCount(pendingApproveCnt);
 
-  // 조치 이행율(최근 7일 고정 기준 - 타일은 필터 미적용)
+  // 조치 이행율(최근 7일 고정 기준 - 타일은 필터 미적용). 이행율 자체는 최근 7일간의 처리 실적(이력) 지표이므로
+  // 부품 삭제 여부와 무관하게 전체를 그대로 집계한다 - 승인완료 건까지 포함한 "실적 이력"이기 때문.
   const d7 = new Date(); d7.setDate(d7.getDate()-7);
   const d7Str = d7.toISOString().slice(0,10);
   const recentActions = ALL_ACTIONS.filter(a => a.created_at >= d7Str);
   const approved = recentActions.filter(a=>a.status==="APPROVED").length;
   const actionRate = recentActions.length ? (approved/recentActions.length*100) : 0;
-  const overdue = ALL_ACTIONS.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today);
+  // 기한초과(지연)는 "지금 대응이 필요한" 상태이므로 부품이 삭제된 건 제외
+  const overdue = ALL_ACTIONS.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today && livePartIds.has(a.part_id));
   document.getElementById("kpiActionRate").textContent = DCL.fmtPercent(actionRate);
   document.getElementById("kpiActionSub").textContent = DCL.t("page.dashboard.actionSub", { approved: DCL.fmtCount(approved), total: DCL.fmtCount(recentActions.length), overdue: DCL.fmtCount(overdue.length) });
 
@@ -141,7 +154,7 @@ function renderTodayKpis(){
     rate, targetCnt, doneCnt,
     missCnt: missList.length, missList: missList.map(m=>({part_name:m.part_name, part_code:m.part_code})),
     abnormalCnt: abnormalToday,
-    actionOpenCnt: ALL_ACTIONS.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status)).length,
+    actionOpenCnt: ALL_ACTIONS.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status) && livePartIds.has(a.part_id)).length,
     actionDoneRate: actionRate,
     overdueCnt: overdue.length,
     overdueList: overdue.map(a=>({ part_name: partMap[a.part_id]?.part_name||"-", issue_desc:a.issue_desc }))
@@ -158,9 +171,11 @@ function myTaskCounts(){
   const today = DCL.today();
   const myPartIds = ALL_ASSIGNMENTS.filter(a=>a.inspector_id===insp.id).map(a=>a.part_id);
   const myDueIds = myPartIds.filter(id => partMap[id] && DCL.isDueOn(partMap[id], today));
-  const myOpenActions = ALL_ACTIONS.filter(a => a.assignee_id === insp.id && ["OPEN","IN_PROGRESS"].includes(a.status));
+  // 부품이 삭제된 조치는 더 이상 처리 대상이 아니므로 "조치할 항목"/"승인할 항목" 집계에서 제외(livePartIdSet)
+  const livePartIds = livePartIdSet();
+  const myOpenActions = ALL_ACTIONS.filter(a => a.assignee_id === insp.id && ["OPEN","IN_PROGRESS"].includes(a.status) && livePartIds.has(a.part_id));
   const isAdmin = insp.role === "admin";
-  const myApprovals = isAdmin ? ALL_ACTIONS.filter(a => a.status === "DONE") : [];
+  const myApprovals = isAdmin ? ALL_ACTIONS.filter(a => a.status === "DONE" && livePartIds.has(a.part_id)) : [];
 
   // KPI박스 표시용 "실행한 건수 / 전체 건수" 계산.
   // - 점검할 항목: 분모 = 오늘 배정된 점검 대상 전체, 분자 = 그 중 이미 점검 완료한 건수.
@@ -392,12 +407,14 @@ async function openKpiListModal(kind){
     }).join("");
     emptyKey = "page.dashboard.kpiModal.actionEmpty";
   } else if (kind === "progress" || kind === "pendingApprove") {
-    // 조치관리(actions.html)의 "조치중"/"완료대기(승인전)" KPI와 동일한 기준(날짜 미필터, 현재 상태 건수)
+    // 조치관리(actions.html)의 "조치중"/"완료대기(승인전)" KPI와 동일한 기준(날짜 미필터, 현재 상태 건수).
+    // 부품이 삭제된 조치는 집계에서 제외(livePartIdSet) - 타일 숫자와 팝업 목록을 항상 일치시킨다.
     const statusVal = kind === "progress" ? "IN_PROGRESS" : "DONE";
+    const livePartIds = livePartIdSet();
     const statusBadge = { OPEN:"badge-red", IN_PROGRESS:"badge-yellow", DONE:"badge-blue", APPROVED:"badge-green", REJECTED:"badge-red" };
     title = DCL.t(kind === "progress" ? "page.actions.kpiProgress" : "page.actions.kpiDone");
     head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.assignee")}</th><th>${DCL.t("common.col.dueDate")}</th><th>${DCL.t("common.col.status")}</th></tr>`;
-    rows = ALL_ACTIONS.filter(a => a.status === statusVal).map(a=>{
+    rows = ALL_ACTIONS.filter(a => a.status === statusVal && livePartIds.has(a.part_id)).map(a=>{
       const p = partMap[a.part_id];
       return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td class="text-mute">${a.assignee_id ? esc(inspMap[a.assignee_id]?.name||"-") : "-"}</td><td>${a.due_date ? DCL.fmtDate(a.due_date) : "-"}</td><td><span class="badge ${statusBadge[a.status]||'badge-gray'}">${DCL.t("status."+a.status)}</span></td></tr>`;
     }).join("");

@@ -35,13 +35,23 @@ async function loadAll(){
   renderTable();
 }
 
+// 부품이 삭제(is_deleted=true)되면 그 부품에 달린 조치는 더 이상 실제로 처리할 대상이 없다.
+// "처리 필요" 성격의 KPI(대기/조치중/완료대기/반려/기한초과)는 이 함수로 걸러낸 "살아있는 부품"에
+// 연결된 조치만 집계한다. 조치 레코드 자체는 삭제하지 않고 보존되므로, "전체 상태" 필터나 점검 이력
+// 조회 화면/조치 처리 이력 타임라인에서는 이 필터와 무관하게 계속 전체(이력)를 확인할 수 있다.
+function livePartIdSet(){
+  return new Set(ALL_PARTS.map(p=>p.id));
+}
+
 function renderKpis(){
   const today = DCL.today();
-  const open = ALL_ACTIONS.filter(a=>a.status==="OPEN").length;
-  const prog = ALL_ACTIONS.filter(a=>a.status==="IN_PROGRESS").length;
-  const done = ALL_ACTIONS.filter(a=>a.status==="DONE").length;
-  const rejected = ALL_ACTIONS.filter(a=>a.status==="REJECTED").length;
-  const overdue = ALL_ACTIONS.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today).length;
+  const livePartIds = livePartIdSet();
+  const activeActions = ALL_ACTIONS.filter(a => livePartIds.has(a.part_id));
+  const open = activeActions.filter(a=>a.status==="OPEN").length;
+  const prog = activeActions.filter(a=>a.status==="IN_PROGRESS").length;
+  const done = activeActions.filter(a=>a.status==="DONE").length;
+  const rejected = activeActions.filter(a=>a.status==="REJECTED").length;
+  const overdue = activeActions.filter(a=>["OPEN","IN_PROGRESS"].includes(a.status) && a.due_date && a.due_date < today).length;
   document.getElementById("kpiOpen").textContent = DCL.fmtCount(open);
   document.getElementById("kpiProgress").textContent = DCL.fmtCount(prog);
   document.getElementById("kpiDone").textContent = DCL.fmtCount(done);
@@ -62,6 +72,10 @@ function renderTable(){
   const today = DCL.today();
 
   let list = ALL_ACTIONS.slice();
+  // 부품이 삭제된 조치는 더 이상 처리할 대상이 없으므로 기본적으로 목록에서 제외한다(KPI 타일과 동일 기준).
+  // 다만 "전체 상태"(값 없음)를 명시적으로 선택한 경우만은 삭제된 부품의 조치까지 포함해 이력 확인이
+  // 가능하도록 예외로 둔다(조치 레코드 자체는 삭제되지 않고 항상 보존됨).
+  if (status !== "") list = list.filter(a => livePartIdSet().has(a.part_id));
   // "기한초과"는 실제 status 컬럼 값이 아니라 계산된 값이므로 별도로 필터링한다.
   // "ACTIVE"(기본값)는 승인완료(APPROVED) 건만 제외한 처리 필요 목록 - 승인완료 이력은
   // 점검 이력 조회 화면에서 확인 가능하므로 여기서는 기본적으로 숨긴다. 반려(REJECTED)는
@@ -121,9 +135,12 @@ function openKpiListModal(kind){
     OVERDUE: "page.actions.kpiOverdue"
   }[kind];
 
-  const list = kind === "OVERDUE"
+  // KPI 타일 숫자와 항상 일치하도록, 부품이 삭제된 조치는 팝업 목록에서도 동일하게 제외한다.
+  const livePartIds = livePartIdSet();
+  const list = (kind === "OVERDUE"
     ? ALL_ACTIONS.filter(a=>isOverdue(a, today))
-    : ALL_ACTIONS.filter(a=>a.status===kind);
+    : ALL_ACTIONS.filter(a=>a.status===kind)
+  ).filter(a => livePartIds.has(a.part_id));
 
   const head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("page.actions.colIssue")}</th><th>${DCL.t("page.actions.colSeverity")}</th><th>${DCL.t("common.col.assignee")}</th><th>${DCL.t("common.col.dueDate")}</th><th>${DCL.t("common.col.status")}</th></tr>`;
   const rows = list.map(a => {
