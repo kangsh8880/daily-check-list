@@ -16,7 +16,9 @@ const CATEGORY_LABEL_KEY = {
   history: "nav.history",
   inquiries: "nav.inquiries",
   report: "nav.report",
-  i18nAdmin: "nav.i18n"
+  // SEED_CATEGORY(js/i18n.js)에는 "i18nAdmin"이 아니라 "i18n"으로 저장되어 있어, 기존 키("i18nAdmin")는
+  // 실제로는 한 번도 매칭되지 않고 "화면" 컬럼에 번역되지 않은 원본값 "i18n"이 그대로 노출되고 있었다.
+  i18n: "nav.i18n"
 };
 
 document.addEventListener("DOMContentLoaded", async function(){
