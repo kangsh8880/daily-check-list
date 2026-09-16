@@ -114,6 +114,12 @@ function renderTodayKpis(){
   const abnormalToday = ALL_INSPECTIONS.filter(i=>i.inspect_date===today && i.overall_result==="ABNORMAL").length;
   document.getElementById("kpiAbn").textContent = DCL.fmtCount(abnormalToday);
 
+  // 조치중 / 완료대기(승인전) - 조치관리(actions.js) 화면과 동일하게 날짜 필터 없이 현재 상태 건수 그대로 표시
+  const progressCnt = ALL_ACTIONS.filter(a=>a.status==="IN_PROGRESS").length;
+  const pendingApproveCnt = ALL_ACTIONS.filter(a=>a.status==="DONE").length;
+  document.getElementById("kpiProgress").textContent = DCL.fmtCount(progressCnt);
+  document.getElementById("kpiPendingApprove").textContent = DCL.fmtCount(pendingApproveCnt);
+
   // 조치 이행율(최근 7일 고정 기준 - 타일은 필터 미적용)
   const d7 = new Date(); d7.setDate(d7.getDate()-7);
   const d7Str = d7.toISOString().slice(0,10);
@@ -385,6 +391,17 @@ async function openKpiListModal(kind){
       return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td><span class="badge ${statusBadge[a.status]||'badge-gray'}">${DCL.t("status."+a.status)}</span></td><td>${DCL.fmtDate(a.due_date)}</td></tr>`;
     }).join("");
     emptyKey = "page.dashboard.kpiModal.actionEmpty";
+  } else if (kind === "progress" || kind === "pendingApprove") {
+    // 조치관리(actions.html)의 "조치중"/"완료대기(승인전)" KPI와 동일한 기준(날짜 미필터, 현재 상태 건수)
+    const statusVal = kind === "progress" ? "IN_PROGRESS" : "DONE";
+    const statusBadge = { OPEN:"badge-red", IN_PROGRESS:"badge-yellow", DONE:"badge-blue", APPROVED:"badge-green", REJECTED:"badge-red" };
+    title = DCL.t(kind === "progress" ? "page.actions.kpiProgress" : "page.actions.kpiDone");
+    head = `<tr><th>${DCL.t("common.col.part")}</th><th>${DCL.t("common.col.content")}</th><th>${DCL.t("common.col.assignee")}</th><th>${DCL.t("common.col.dueDate")}</th><th>${DCL.t("common.col.status")}</th></tr>`;
+    rows = ALL_ACTIONS.filter(a => a.status === statusVal).map(a=>{
+      const p = partMap[a.part_id];
+      return `<tr><td><b>${p?esc(p.part_name):"-"}</b><div class="text-mute mono fs-xs">${p?esc(p.part_code):""}</div></td><td style="max-width:220px;">${esc(a.issue_desc)}</td><td class="text-mute">${a.assignee_id ? esc(inspMap[a.assignee_id]?.name||"-") : "-"}</td><td>${a.due_date ? DCL.fmtDate(a.due_date) : "-"}</td><td><span class="badge ${statusBadge[a.status]||'badge-gray'}">${DCL.t("status."+a.status)}</span></td></tr>`;
+    }).join("");
+    emptyKey = "page.actions.emptyList";
   } else if (kind === "myInspect") {
     // 개인별 오늘 할 일 - 점검할 항목: 오늘 점검주기 대상으로 본인에게 배정된 부품 (대시보드 구축 원칙:
     // KPI박스 클릭 → 목록 팝업 → 목록에서 항목 클릭 → 처리 페이지(inspect.html)로 이동)
