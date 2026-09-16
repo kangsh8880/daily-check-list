@@ -252,13 +252,13 @@
     { href:"inspect.html",    ico:"📷", labelKey:"nav.inspect", roles:null },
     { href:"actions.html",    ico:"🛠️", labelKey:"nav.actions", roles:null },
     { href:"history.html",    ico:"📜", labelKey:"nav.history", roles:null },
-    { href:"inquiries.html",  ico:"💬", labelKey:"nav.inquiries", roles:null },
     { href:"report.html",     ico:"🗓️", labelKey:"nav.report", roles:["admin"] },
+    { href:"types.html",      ico:"🧩", labelKey:"nav.types", roles:["admin"] },
     { href:"parts.html",      ico:"📦", labelKey:"nav.parts", roles:["admin"] },
     { href:"qr.html",         ico:"🏷️", labelKey:"nav.qr", roles:["admin"] },
-    { href:"types.html",      ico:"🧩", labelKey:"nav.types", roles:["admin"] },
     { href:"inspectors.html", ico:"👥", labelKey:"nav.inspectors", roles:["admin"] },
-    { href:"i18n-admin.html", ico:"🌐", labelKey:"nav.i18n", roles:["admin"] }
+    { href:"i18n-admin.html", ico:"🌐", labelKey:"nav.i18n", roles:["admin"] },
+    { href:"inquiries.html",  ico:"💬", labelKey:"nav.inquiries", roles:null }
   ];
   DCL.roleLabel = function(role){
     return { admin: DCL.t("role.admin"), action_owner: DCL.t("role.action_owner"), inspector: DCL.t("role.inspector") }[role] || role;
