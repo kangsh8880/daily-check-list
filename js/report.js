@@ -66,6 +66,13 @@ async function loadMasters(){
   ]);
 }
 
+// 부품이 삭제(is_deleted=true)되면 그 부품에 달린 조치는 더 이상 실제로 처리할 대상이 없다.
+// dashboard.js/actions.js와 동일한 원칙: "현재 처리 필요" 집계(미조치/미승인/명일 조치할 항목)에서는
+// 삭제된 부품의 조치를 제외하고, 조치 기록 자체(이력)는 그대로 보존한다.
+function livePartIdSet(){
+  return new Set(ALL_PARTS.map(p=>p.id));
+}
+
 // 조회일이 바뀔 때마다(최초 로드 포함) 전일~명일 구간의 점검 기록을 다시 조회한 뒤 3블록을 렌더한다.
 // (과거 조회일도 동일하게 지원 - inspections 조회 구간만 그 시점 기준으로 이동)
 async function reloadAndRender(){
@@ -105,8 +112,10 @@ function renderBlock1(yesterday){
 
   // 미조치/미승인: 조회일(전일) 이전에 등록된 조치 중, 현재 상태 기준으로 아직 미해결인 건수(누적).
   // 조치 상태 변경 이력은 별도 테이블로 기록되지 않으므로, 과거 시점 스냅샷이 아닌 "현재 상태" 기준 집계다.
-  const openActions = ALL_ACTIONS.filter(a => (a.created_at||"").slice(0,10) <= yesterday && ["OPEN","IN_PROGRESS"].includes(a.status));
-  const unapprovedActions = ALL_ACTIONS.filter(a => (a.created_at||"").slice(0,10) <= yesterday && a.status === "DONE");
+  // 부품이 삭제된 조치는 더 이상 처리 대상이 아니므로 집계에서 제외(livePartIdSet) - 조치 기록 자체는 보존됨.
+  const livePartIds = livePartIdSet();
+  const openActions = ALL_ACTIONS.filter(a => (a.created_at||"").slice(0,10) <= yesterday && ["OPEN","IN_PROGRESS"].includes(a.status) && livePartIds.has(a.part_id));
+  const unapprovedActions = ALL_ACTIONS.filter(a => (a.created_at||"").slice(0,10) <= yesterday && a.status === "DONE" && livePartIds.has(a.part_id));
   document.getElementById("kpiYOpen").textContent = DCL.fmtCount(openActions.length);
   document.getElementById("kpiYUnapproved").textContent = DCL.fmtCount(unapprovedActions.length);
 
@@ -172,7 +181,8 @@ function renderBlock3(tomorrow){
   const dueIds = duePartIdsOn(tomorrow);
   document.getElementById("kpiTmrTarget").textContent = DCL.fmtCount(dueIds.length);
 
-  const dueActions = ALL_ACTIONS.filter(a => a.due_date === tomorrow && ["OPEN","IN_PROGRESS"].includes(a.status));
+  // "명일 조치할 항목"도 현재 처리 필요 집계이므로 삭제된 부품의 조치는 제외한다.
+  const dueActions = ALL_ACTIONS.filter(a => a.due_date === tomorrow && ["OPEN","IN_PROGRESS"].includes(a.status) && livePartIdSet().has(a.part_id));
   document.getElementById("kpiTmrDueAction").textContent = DCL.fmtCount(dueActions.length);
 
   STATE.tmr = { tomorrow, dueIds, dueActions };
